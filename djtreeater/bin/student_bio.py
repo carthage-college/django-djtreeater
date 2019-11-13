@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
+
+import os, sys
+# env
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
+
+import django
+django.setup()
+
+from django.conf import settings
+
+import argparse
+
 import csv
 import pysftp
 import argparse
 import logging
-import django
-
-# django settings for shell environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'djtreeater.settings.shell')
-
-# needed for some django features (e.g. templates for emails)
-django.setup()
-
-# django settings for script
-from django.conf import settings
-from djtools.utils.mail import send_mail
-from djimix.core.utils import get_connection, xsql
 
 from djtreeater.sql.adirondack import ADIRONDACK_QUERY
 from djtreeater.core.utilities import fn_write_student_bio_header
 from djtreeater.core.utilities import fn_encode_rows_to_utf8
+
+from djtools.utils.mail import send_mail
+from djimix.core.utils import get_connection, xsql
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -36,11 +37,10 @@ os.environ['LD_RUN_PATH'] = settings.LD_RUN_PATH
 desc = """
     Collect adirondack data for import
 """
-parser = argparse.ArgumentParser(description=desc)
-
-# Test with this then remove, use the standard logging mechanism
-logger = logging.getLogger('djtreater')
-
+# RawTextHelpFormatter method allows for new lines in help text
+parser = argparse.ArgumentParser(
+    description=desc, formatter_class=argparse.RawTextHelpFormatter
+)
 parser.add_argument(
     "--test",
     action='store_true',
@@ -52,6 +52,9 @@ parser.add_argument(
     help="database name.",
     dest="database"
 )
+
+# set up our logger
+logger = logging.getLogger('djtreeater')
 
 
 def sftp_upload(upload_filename):
@@ -90,6 +93,11 @@ def sftp_upload(upload_filename):
 
 
 def main():
+    '''
+    main function
+    '''
+
+    logger.error('skeletor is here')
 
     # Defines file names and directory location
     adirondackdata = ('{0}carthage_students.txt'.format(
@@ -142,11 +150,12 @@ def main():
         if test:
             SUBJECT = "[Adirondack] Student Bio data success"
             BODY = "Retreieved data and sent it via SFTP to the eater of trees."
-            send_mail (
+            send_mail(
                 None, [settings.ADIRONDACK_TO_EMAIL,], SUBJECT,
                 settings.ADIRONDACK_FROM_EMAIL, 'email/default.html',
                 BODY, [settings.ADMINS[0][1],]
             )
+            print('done')
             logger.error(BODY)
 
     except Exception as e:

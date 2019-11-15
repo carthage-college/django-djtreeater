@@ -2,7 +2,8 @@
 
 import os
 # django settings for shell environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
+# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
 import django
 django.setup()
 from django.conf import settings

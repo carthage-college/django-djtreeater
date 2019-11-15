@@ -14,24 +14,24 @@ import django
 # ________________
 # Note to self, keep this here
 # django settings for shell environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
 django.setup()
 # ________________
 
 from django.conf import settings
-from djequis.core.utils import sendmail
-from djzbar.utils.informix import do_sql
-from djzbar.utils.informix import get_engine
-# from djtools.fields import TODAY
-from djzbar.settings import INFORMIX_EARL_SANDBOX
-from djzbar.settings import INFORMIX_EARL_TEST
-from djzbar.settings import INFORMIX_EARL_PROD
-from adirondack_sql import ADIRONDACK_QUERY, Q_GET_TERM
-from utilities import fn_write_error, fn_write_billing_header, \
-    fn_write_assignment_header, fn_get_utcts, fn_encode_rows_to_utf8, \
-    fn_get_bill_code, fn_fix_bldg, fn_mark_room_posted, \
-    fn_translate_bldg_for_adirondack
-from assign_notify import fn_notify
+from djtools.utils.mail import send_mail
+# from settings import  settings.INFORMIX_ODBC_TRAIN
+# from djzbar.settings import INFORMIX_EARL_SANDBOX
+# from djzbar.settings import INFORMIX_EARL_TEST
+# from djzbar.settings import INFORMIX_EARL_PROD
+from djtreeater.sql.adirondack import ADIRONDACK_QUERY, Q_GET_TERM
+from djtreeater.core.utilities import fn_write_error, \
+    fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
+    fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
+    fn_mark_room_posted, fn_translate_bldg_for_adirondack
+from djtreeater.core.adiron_asgn_ntfy import fn_notify
+from djimix.core.utils import get_connection, xsql
+
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -104,11 +104,11 @@ def main():
         global EARL
         # determines which database is being called from the command line
         if database == 'cars':
-            EARL = INFORMIX_EARL_PROD
+            EARL = settings.INFORMIX_ODBC_TRAIN
         if database == 'train':
-            EARL = INFORMIX_EARL_TEST
+            EARL = settings.INFORMIX_ODBC_TRAIN
         elif database == 'sandbox':
-            EARL = INFORMIX_EARL_SANDBOX
+            EARL = settings.INFORMIX_ODBC_TRAIN
         else:
             # # this will raise an error when we call get_engine()
             # below but the argument parser should have taken
@@ -127,8 +127,6 @@ def main():
         # print(API_server)
         # print(key)
 
-        engine = get_engine(EARL)
-
         utcts = fn_get_utcts()
         # print("Seconds from UTC Zero hour = " + str(utcts))
         hashstring = str(utcts) + key
@@ -139,10 +137,10 @@ def main():
 
         if run_mode == "manual":
             # print("Manual Mode")
-            session = raw_input("Enter target session (EX. RA 2019):  ")
+            session = input("Enter target session (EX. RA 2019):  ")
             hall = fn_translate_bldg_for_adirondack(
-                raw_input("Enter Hall code: "))
-            posted = raw_input("Do you want unposted or posted records?  "
+                input("Enter Hall code: "))
+            posted = input("Do you want unposted or posted records?  "
                                "Enter 0 for unposted, 1 for posted, "
                                "2 for changed, 0,2 for both: ")
             # print(posted)
@@ -150,41 +148,46 @@ def main():
         elif run_mode == "auto":
 
             # Get the current term
-            ret = do_sql(Q_GET_TERM, key=DEBUG, earl=EARL)
-            if ret is not None:
-                row = ret.fetchone()
-                if row is None:
-                    # print("Term not found")
-                    fn_write_error(
-                        "Error in room_assignments.py - Main: No term found ")
-                    quit()
-                else:
+            connection = get_connection(EARL)
+            # connection closes when exiting the 'with' block
+            with connection:
+                data_result = xsql(
+                    Q_GET_TERM, connection,
+                    key=settings.INFORMIX_DEBUG
+                ).fetchall()
+            ret = list(data_result)
+
+            # ret = do_sql(Q_GET_TERM, key=DEBUG, earl=EARL)
+            if ret is None:
+                print("Term not found")
+                # fn_write_error(
+                #     "Error in room_assignments.py - Main: No term found ")
+                quit()
+            else:
+                for row in ret:
                     session = row[0]
                     hall = ''
                     posted = '0,2'
-                # IMPORTANT! won't work if string has any spaces.  NO SPACES
+            # IMPORTANT! won't work if string has any spaces.  NO SPACES
 
         url = "https://carthage.datacenter.adirondacksolutions.com/" \
               + API_server + "/apis/thd_api.cfc?" \
-                             "method=housingASSIGNMENTS&" \
-                             "Key=" + key + "&" \
-                                            "utcts=" + \
+                  "method=housingASSIGNMENTS&" \
+                  "Key=" + key + "&" \
+                  "utcts=" + \
               str(utcts) + "&" \
-                           "h=" + hash_object.hexdigest() + "&" \
-                                                            "TimeFrameNumericCode=" + session + "&" \
-                                                                                                "Posted=" + posted + "&" \
+                  "h=" + hash_object.hexdigest() + "&" \
+                  "TimeFrameNumericCode=" + session + "&" \
+                  "Posted=" + posted + "&" \
                                                                                                                      "HALLCODE=" + hall
         # + "&" \
         # "STUDENTNUMBER=" + "1496904"
         # "CurrentFuture=-1" + "&" \
         #                      "Ghost=0" + "&" \
         # NOTE:  HALLCODE can be empty
-
-        # DO NOT MARK AS POSTED HERE - DO IT IN SECOND STEP
-        # "PostAssignments=-1" + "&" \
-
         # + "&" \
         # "HallCode=" + 'SWE'
+
 
         # DEFINITIONS
         # Posted: 0 returns only NEW unposted,
@@ -194,7 +197,7 @@ def main():
         # CurrentFuture: -1 returns only current and future
         # Cancelled: -1 is for cancelled, 0 for not cancelled
 
-        # print("URL = " + url)
+        print("URL = " + url)
 
         # In theory, every room assignment in Adirondack should have
         # a bill code
@@ -320,27 +323,33 @@ def main():
                                         canceldate, cancelnote,
                                         cancelreason, ghost, posted,
                                         roomassignmentid, billcode])
-                    # print(str(carthid) + ', ' + str(billcode) + ', '
+                      # print(str(carthid) + ', ' + str(billcode) + ', '
                     #       + str(bldg) + ', ' + str(room) + ', ' +
                     #       + str(room_type))
                     # Validate if the stu_serv_rec exists first
                     # update stu_serv_rec id, sess, yr, rxv_stat,
                     # intend_hsg, campus, bldg, room, bill_code
+
                     q_validate_stuserv_rec = '''
-                                  select id, sess, yr, rsv_stat, 
-                                  intend_hsg, campus, bldg, room, 
-                                  no_per_room, 
-                                  add_date, 
-                                  bill_code, hous_wd_date 
-                                  from stu_serv_rec 
+                                  select id, sess, yr, rsv_stat,
+                                  intend_hsg, campus, bldg, room,
+                                  no_per_room,
+                                  add_date,
+                                  bill_code, hous_wd_date
+                                  from stu_serv_rec
                                   where yr = {2}
                                   and sess  = "{1}"
                                   and id = {0}'''.format(carthid,
                                                          sess, year)
-                    # print(q_validate_stuserv_rec)
-
-                    ret = do_sql(q_validate_stuserv_rec, key=DEBUG,
-                                 earl=EARL)
+                    print(q_validate_stuserv_rec)
+                    connection = get_connection(EARL)
+                    # connection closes when exiting the 'with' block
+                    with connection:
+                        data_result = xsql(
+                            q_validate_stuserv_rec, connection,
+                            key=settings.INFORMIX_DEBUG
+                        ).fetchall()
+                    ret = list(data_result)
 
                     if ret is not None:
                         if billcode > 0:
@@ -348,21 +357,19 @@ def main():
                             # billcode
                             # Update only if something has changed
                             # print("Record found " + carthid)
-
-                            row = ret.fetchone()
-                            if row is not None:
+                            for row in ret:
                                 if row[3] != rsvstat \
                                         or row[4] != intendhsg \
                                         or row[6] != bldg \
                                         or row[7] != room \
                                         or row[10] != billcode:
-                                    # print("Need to update stu_serv_rec")
+                                    print("Need to update stu_serv_rec")
                                     q_update_stuserv_rec = '''
-                                        UPDATE stu_serv_rec set rsv_stat = ?, 
-                                        intend_hsg = ?, campus = ?, 
+                                        UPDATE stu_serv_rec set rsv_stat = ?,
+                                        intend_hsg = ?, campus = ?,
                                         bldg = ?, room = ?,
                                         bill_code = ?
-                                        where id = ? and sess = ? and 
+                                        where id = ? and sess = ? and
                                         yr = ?'''
                                     q_update_stuserv_args = (rsvstat,
                                                              intendhsg,
@@ -371,11 +378,17 @@ def main():
                                                              billcode,
                                                              carthid,
                                                              sess, year)
-                                    engine.execute(
-                                        q_update_stuserv_rec,
-                                        q_update_stuserv_args)
-
-                                    # print("Mark room as posted...")
+                                    connection = get_connection(EARL)
+                                    # connection closes when exiting the
+                                    # 'with' block
+                                    with connection:
+                                        cur = connection.cursor()
+                                        cur.execute(q_update_stuserv_rec,
+                                                    [q_update_stuserv_args])
+                                        cur.close()
+                                        connection.commit()
+                                        connection.close()
+                                    print("Mark room as posted...")
                                     fn_mark_room_posted(carthid,
                                                         adir_room,
                                                         adir_hallcode,
@@ -386,8 +399,8 @@ def main():
                                     fn_notify(room_output, EARL)
 
                                 else:
-                                    # print("No change needed in "
-                                    #        "stu_serv_rec")
+                                    print("No change needed in "
+                                           "stu_serv_rec")
                                     fn_mark_room_posted(carthid, adir_room,
                                                         adir_hallcode, term,
                                                         posted,
@@ -395,7 +408,6 @@ def main():
                                                         API_server, key)
                                     # Notify Marietta of changes
                                     fn_notify(room_output, EARL)
-
 
                             else:
                                 # print("fetch retuned none - No "
@@ -405,30 +417,31 @@ def main():
                                        "exist for " + carthid + " for term " \
                                        + term + ".. Please inquire why."
                                 subj = "Adirondack - Stu_serv_rec missing"
+                                print(body)
                                 # sendmail(ADIRONDACK_LIS_SUPPORT,
                                 #          ADIRONDACK_FROM_EMAIL, body, subj)
 
                         else:
-                            # print("Bill code not found")
-                            fn_write_error(
-                                "Error in room_assignments.py - Bill code not"
-                                "found  ID = " + carthid, + ", Building = "
-                                + str(bldg) + ", Room assignment ID = "
-                                + str(roomassignmentid))
-                    #     # go ahead and update
+                            print("Bill code not found")
+                            # fn_write_error(
+                                # "Error in room_assignments.py - Bill code not"
+                                # "found  ID = " + carthid, + ", Building = "
+                                # + str(bldg) + ", Room assignment ID = "
+                                # + str(roomassignmentid))
+                        # go ahead and update
                     else:
-                        # print("Record not found")
-                        body = "Student Service Record does not " \
-                               "exist for " + carthid + " for term " \
-                               + term + ".. Please inquire why."
-                        subj = "Adirondack - Stu_serv_rec missing"
+                        print("Record not found")
+                        # body = "Student Service Record does not " \
+                        #        "exist for " + carthid + " for term " \
+                        #        + term + ".. Please inquire why."
+                        # subj = "Adirondack - Stu_serv_rec missing"
 
-        # # Remove this after testing - only for testing when no
-        # recent changes are found via the API
-        # room_output = settings.ADIRONDACK_TXT_OUTPUT + \
-        #             settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
-        #
-        # fn_notify(room_output, EARL)
+        # # # Remove this after testing - only for testing when no
+        # # recent changes are found via the API
+        # # room_output = settings.ADIRONDACK_TXT_OUTPUT + \
+        # #             settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
+        # #
+        # # fn_notify(room_output, EARL)
 
 
     except Exception as e:
@@ -446,26 +459,26 @@ if __name__ == "__main__":
     run_mode = args.run_mode
 
     if not database:
-        print "mandatory option missing: database name\n"
+        print("mandatory option missing: database name\n")
         parser.print_help()
         exit(-1)
     else:
         database = database.lower()
 
     if database != 'cars' and database != 'train' and database != 'sandbox':
-        print "database must be: 'cars' or 'train' or 'sandbox'\n"
+        print("database must be: 'cars' or 'train' or 'sandbox'\n")
         parser.print_help()
         exit(-1)
 
     if not run_mode:
-        print "mandatory option missing: run_mode\n"
+        print("mandatory option missing: run_mode\n")
         parser.print_help()
         exit(-1)
     else:
         run_mode = run_mode.lower()
 
     if run_mode != 'manual' and run_mode != 'auto':
-        print "run_mode must be: 'manual' or 'auto'"
+        print("run_mode must be: 'manual' or 'auto'")
         parser.print_help()
         exit(-1)
 

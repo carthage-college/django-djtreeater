@@ -16,21 +16,22 @@ import django
 # ________________
 # Note to self, keep this here
 # django settings for shell environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
 django.setup()
 # ________________
 
 from django.conf import settings
-from utilities import fn_write_error, fn_write_misc_header, \
-    fn_sendmailfees, fn_get_utcts, fn_write_billing_header, \
-    fn_encode_rows_to_utf8, fn_mark_bill_exported
+from djtreeater.core.utilities import fn_write_error, \
+    fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
+    fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
+    fn_mark_room_posted, fn_translate_bldg_for_adirondack
 
-from djzbar.utils.informix import do_sql
-from djzbar.utils.informix import get_engine
-from django.conf import settings
+from djimix.core.utils import get_connection, xsql
+# from djzbar.utils.informix import do_sql
+# from djzbar.utils.informix import get_engine
+# from djzbar.settings import INFORMIX_EARL_TEST
+# from djzbar.settings import INFORMIX_EARL_PROD
 
-from djzbar.settings import INFORMIX_EARL_TEST
-from djzbar.settings import INFORMIX_EARL_PROD
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -89,8 +90,8 @@ def fn_check_cx_records(totcod, prd, jndate, stuid, amt):
         and IR.id = {3}
         and STR.amt = {4}
         '''.format(totcod, prd, jndate, stuid, amt)
-    # print(billqry)
-    ret = do_sql(billqry, earl=EARL)
+    print(billqry)
+    # ret = do_sql(billqry, earl=EARL)
     # print(ret)
     if ret is None:
         return 0
@@ -121,9 +122,9 @@ def main():
     global EARL
     # determines which database is being called from the command line
     if database == 'cars':
-        EARL = INFORMIX_EARL_PROD
+        EARL = settings.INFORMIX_ODBC_TRAIN
     if database == 'train':
-        EARL = INFORMIX_EARL_TEST
+        EARL = settings.INFORMIX_ODBC_TRAIN
     else:
         # # this will raise an error when we call get_engine()
         # below but the argument parser should have taken
@@ -183,12 +184,12 @@ def main():
         # ExportCharges: if -1 then charges will be marked as exported
         # DO NOT mark exported here.  Wait for later step
 
-        # print("URL = " + url)
+        print("URL = " + url)
 
         response = requests.get(url)
         x = json.loads(response.content)
         if not x['DATA']:
-            # print("No new data found")
+            print("No new data found")
             pass
         else:
             # ----------------------------------------
@@ -246,9 +247,9 @@ def main():
                 ffile.close()
 
             else:
-                # print ("No file")
-                fn_write_billing_header(cur_file)
-
+                print ("No file")
+        #         fn_write_billing_header(cur_file)
+        #
             # For extra insurance, include last term items in the list
             if os.path.isfile(last_file):
                 # print ("last_file exists")
@@ -262,8 +263,8 @@ def main():
                         the_list.append(assign_id)
                 lfile.close()
             else:
-                # print ("No file")
-                fn_write_billing_header(last_file)
+                print ("No file")
+        #         fn_write_billing_header(last_file)
 
             # List of previously processed rows
             # print(the_list)
@@ -283,7 +284,7 @@ def main():
 
             # Adirondack dataset
             bill_list = []
-
+        #
             for i in x['DATA']:
                 # --------------------
                 # As the csv is being created
@@ -433,15 +434,19 @@ def main():
                 subject = 'Housing Miscellaneous Fees'
                 body = 'There are housing fees to process via ASCII ' \
                     'post'
-                fn_sendmailfees(settings.ADIRONDACK_ASCII_EMAIL,
+                fn_sendmailfees('dsullivan@carthage.edu',
                                 settings.ADIRONDACK_FROM_EMAIL,
                                 body, subject
                                 )
+                # fn_sendmailfees(settings.ADIRONDACK_ASCII_EMAIL,
+                #                 settings.ADIRONDACK_FROM_EMAIL,
+                #                 body, subject
+                #                 )
 
     except Exception as e:
         print("Error in misc_fees.py- Main:  " + e.message)
-        fn_write_error("Error in misc_fees.py - Main: "
-                       + e.message)
+        # fn_write_error("Error in misc_fees.py - Main: "
+        #                + e.message)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -449,14 +454,14 @@ if __name__ == "__main__":
     database = args.database
 
     if not database:
-        print "mandatory option missing: database name\n"
+        print("mandatory option missing: database name\n")
         parser.print_help()
         exit(-1)
     else:
         database = database.lower()
 
     if database != 'cars' and database != 'train' and database != 'sandbox':
-        print "database must be: 'cars' or 'train' or 'sandbox'\n"
+        print("database must be: 'cars' or 'train' or 'sandbox'\n")
         parser.print_help()
         exit(-1)
 

@@ -9,22 +9,18 @@ import smtplib
 # ________________
 # Note to self, keep this here
 # django settings for shell environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
 django.setup()
 # ________________
 
 from django.conf import settings
-from djzbar.utils.informix import do_sql
-from djzbar.utils.informix import get_engine
 from email.mime.text import MIMEText
-from djequis.core.utils import sendmail
+from djtools.utils.mail import send_mail
+from djimix.core.utils import get_connection, xsql
 
-# from djzbar.settings import INFORMIX_EARL_SANDBOX
-# from djzbar.settings import INFORMIX_EARL_TEST
-from djzbar.settings import INFORMIX_EARL_PROD
-# from adirondack_sql import ADIRONDACK_QUERY, Q_GET_TERM
-from utilities import fn_get_bill_code, fn_translate_bldg_for_adirondack, \
-    fn_write_error
+from djtreeater.sql.adirondack import ADIRONDACK_QUERY, Q_GET_TERM
+from djtreeater.core.utilities import fn_get_bill_code, \
+    fn_translate_bldg_for_adirondack, fn_write_error
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -124,16 +120,25 @@ def fn_notify(file, EARL):
                     fullname = ""
                     Q_GET_NAME = '''select fullname from id_rec 
                        where id = {0}'''.format(line[0])
-                    ret = do_sql(Q_GET_NAME, key=DEBUG, earl=EARL)
-                    if ret is not None:
-                        row = ret.fetchone()
-                        if row is None:
-                            print("Name not found")
-                            # fn_write_error(
-                            #     "Error in asign_notify.py - fn_notifyn: No "
-                            #     "name found ")
-                            quit()
-                        else:
+
+                    connection = get_connection(EARL)
+                    # connection closes when exiting the 'with' block
+                    with connection:
+                        data_result = xsql(
+                            Q_GET_NAME, connection,
+                            key=settings.INFORMIX_DEBUG
+                        ).fetchall()
+                    ret = list(data_result)
+                    # ret = do_sql(Q_GET_NAME, key=DEBUG, earl=EARL)
+
+                    if ret is None:
+                        print("Name not found")
+                        # fn_write_error(
+                        #     "Error in asign_notify.py - fn_notifyn: No "
+                        #     "name found ")
+                        quit()
+                    else:
+                        for row in ret:
                             fullname = row[0]
 
                     code_list.append("Student " + line[0]
@@ -157,16 +162,21 @@ def fn_notify(file, EARL):
         body = "\n" + "Room changes requiring bill code change:"
         for i in code_list:
             body = body + i + "\n"
-        body = body + "\n" + "Room changes not affecting bill code:"
 
-        for i in xtra_list:
-            body = body + i + "\n"
+        if xtra_list is not None:
+            body = body + "\n" + "Room changes not affecting bill code:"
+            for i in xtra_list:
+                body = body + i + "\n"
 
         frum = settings.ADIRONDACK_FROM_EMAIL
-        tu = settings.ADIRONDACK_TO_EMAIL
-        # tu = settings.ADIRONDACK_ASCII_EMAIL  #has Marietta and Carol
+        # # tu = settings.ADIRONDACK_TO_EMAIL
+        tu = 'dullivan@carthage.edu'
+        # # tu = settings.ADIRONDACK_ASCII_EMAIL  #has Marietta and Carol
         subj = "Adirondack - Room Bill Code Change"
-        # fn_send_mail(tu, frum, body, subj)
+
+        # mail not working as of 11/15/19 - debug
+        # # fn_send_mail(tu, frum, body, subj)
+
         print("Mail Sent " + subj + " TO:" + str(tu) + " FROM:" + str(frum)
               + " DETAILS: " + "\n" + body)
 
@@ -178,11 +188,10 @@ def fn_notify(file, EARL):
 
 
 # def main():
-#     EARL = INFORMIX_EARL_PROD
+#     EARL = settings.INFORMIX_ODBC_TRAIN
 #     room_file = settings.ADIRONDACK_TXT_OUTPUT + \
 #                 settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
 #     fn_notify(room_file, EARL)
-#
 #
 # if __name__ == "__main__":
 #

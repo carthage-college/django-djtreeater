@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import os
+# django settings for shell environment
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
+import django
+django.setup()
+from django.conf import settings
+
 import calendar
 import time
 import datetime
@@ -9,21 +15,13 @@ import json
 import requests
 import csv
 
-# django settings for shell environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
-import django
-django.setup()
-
-from django.conf import settings
-from djtreeater.core.utilities import fn_write_error, fn_write_application_header, \
-     fn_get_utcts
-
+from djtreeater.core.utilities import fn_write_error, \
+    fn_write_application_header, fn_get_utcts
 
 # set up command-line options
 desc = """
     Collect adirondack data from applications for housing
 """
-
 
 def encode_rows_to_utf8(rows):
     encoded_rows = []
@@ -70,6 +68,7 @@ def main():
             "h=" + hash_object.hexdigest() + "&" \
             "TimeFrameNumericCode=" + searchval_term + "&" \
             "studentNumber=" + searchval_id
+        # possible additional params
         # + "&"
         # "ApplicationTypeName= "
         # + "&"

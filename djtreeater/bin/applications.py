@@ -15,8 +15,8 @@ import django
 django.setup()
 
 from django.conf import settings
-from utilities import fn_write_error, fn_write_application_header, \
-    fn_get_utcts
+from djtreeater.core.utilities import fn_write_error, fn_write_application_header, \
+     fn_get_utcts
 
 
 # set up command-line options
@@ -57,9 +57,9 @@ def main():
         # Will need to build URL dynamically based on input from user
         # Allow query by student ID
         # Include term as variable
-        searchval_id = raw_input("Enter Carthage ID:   ")
+        searchval_id = input("Enter Carthage ID:   ")
         print(searchval_id)
-        searchval_term = raw_input("Enter Term: (Example RA 2019):  " )
+        searchval_term = input("Enter Term: (Example RA 2019):  " )
         print(searchval_term)
 
         url = "https://carthage.datacenter.adirondacksolutions.com/" \

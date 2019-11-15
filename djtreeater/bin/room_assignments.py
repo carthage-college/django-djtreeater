@@ -10,6 +10,7 @@ import requests
 import csv
 import argparse
 import django
+
 # ________________
 # Note to self, keep this here
 # django settings for shell environment
@@ -30,6 +31,7 @@ from utilities import fn_write_error, fn_write_billing_header, \
     fn_write_assignment_header, fn_get_utcts, fn_encode_rows_to_utf8, \
     fn_get_bill_code, fn_fix_bldg, fn_mark_room_posted, \
     fn_translate_bldg_for_adirondack
+from assign_notify import fn_notify
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -86,17 +88,17 @@ def main():
         # on June 30 grab all RA current year
         # On third wednesday in December grab all RC Next
         # On Next day in Dec, go back to RA Current
-        
+
         # Only options are RC20xx and RA20xx, so I only need to determine
         # which year to pass during each time frame.
         # Question is, for spring housing, will both RA and RC need to be
         # dealt with?
 
         # This is the command needed to run the script
-        # python room_assignments.py --database = train --test - run_mode = auto
+        # python room_assignments.py --database = train --test - run_mode =
+        # auto
         # Must specify the database, whether testing or live and whether
         # user input is required
-
 
         # set global variable
         global EARL
@@ -163,15 +165,15 @@ def main():
                 # IMPORTANT! won't work if string has any spaces.  NO SPACES
 
         url = "https://carthage.datacenter.adirondacksolutions.com/" \
-            +API_server+"/apis/thd_api.cfc?" \
-            "method=housingASSIGNMENTS&" \
-            "Key=" + key + "&" \
-            "utcts=" + \
-            str(utcts) + "&" \
-            "h=" + hash_object.hexdigest() + "&" \
-            "TimeFrameNumericCode=" + session + "&" \
-            "Posted=" + posted + "&" \
-            "HALLCODE=" + hall
+              + API_server + "/apis/thd_api.cfc?" \
+                             "method=housingASSIGNMENTS&" \
+                             "Key=" + key + "&" \
+                                            "utcts=" + \
+              str(utcts) + "&" \
+                           "h=" + hash_object.hexdigest() + "&" \
+                                                            "TimeFrameNumericCode=" + session + "&" \
+                                                                                                "Posted=" + posted + "&" \
+                                                                                                                     "HALLCODE=" + hall
         # + "&" \
         # "STUDENTNUMBER=" + "1496904"
         # "CurrentFuture=-1" + "&" \
@@ -206,8 +208,8 @@ def main():
             room_file = settings.ADIRONDACK_TXT_OUTPUT + \
                         settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
             room_archive = settings.ADIRONDACK_ROOM_ARCHIVED + \
-                settings.ADIRONDACK_ROOM_ASSIGNMENTS + \
-                datetimestr + '.csv'
+                           settings.ADIRONDACK_ROOM_ASSIGNMENTS + \
+                           datetimestr + '.csv'
 
             if os.path.exists(room_file):
                 os.rename(room_file, room_archive)
@@ -317,7 +319,7 @@ def main():
                                         po_box_combo, canceled,
                                         canceldate, cancelnote,
                                         cancelreason, ghost, posted,
-                                        roomassignmentid])
+                                        roomassignmentid, billcode])
                     # print(str(carthid) + ', ' + str(billcode) + ', '
                     #       + str(bldg) + ', ' + str(room) + ', ' +
                     #       + str(room_type))
@@ -363,22 +365,25 @@ def main():
                                         where id = ? and sess = ? and 
                                         yr = ?'''
                                     q_update_stuserv_args = (rsvstat,
-                                        intendhsg,
-                                        "MAIN", bldg,
-                                        room,
-                                        billcode,
-                                        carthid,
-                                        sess, year)
+                                                             intendhsg,
+                                                             "MAIN", bldg,
+                                                             room,
+                                                             billcode,
+                                                             carthid,
+                                                             sess, year)
                                     engine.execute(
                                         q_update_stuserv_rec,
                                         q_update_stuserv_args)
 
                                     # print("Mark room as posted...")
                                     fn_mark_room_posted(carthid,
-                                                   adir_room, adir_hallcode,
+                                                        adir_room,
+                                                        adir_hallcode,
                                                         term, posted,
                                                         roomassignmentid,
                                                         API_server, key)
+                                    # Notify Marietta of changes
+                                    fn_notify(room_output, EARL)
 
                                 else:
                                     # print("No change needed in "
@@ -388,6 +393,9 @@ def main():
                                                         posted,
                                                         roomassignmentid,
                                                         API_server, key)
+                                    # Notify Marietta of changes
+                                    fn_notify(room_output, EARL)
+
 
                             else:
                                 # print("fetch retuned none - No "
@@ -395,7 +403,7 @@ def main():
                                 #       + carthid + " for term " + term)
                                 body = "Student Service Record does not " \
                                        "exist for " + carthid + " for term " \
-                                        + term + ".. Please inquire why."
+                                       + term + ".. Please inquire why."
                                 subj = "Adirondack - Stu_serv_rec missing"
                                 # sendmail(ADIRONDACK_LIS_SUPPORT,
                                 #          ADIRONDACK_FROM_EMAIL, body, subj)
@@ -410,39 +418,18 @@ def main():
                     #     # go ahead and update
                     else:
                         # print("Record not found")
-
                         body = "Student Service Record does not " \
-                                       "exist for " + carthid + " for term " \
-                                        + term + ".. Please inquire why."
+                               "exist for " + carthid + " for term " \
+                               + term + ".. Please inquire why."
                         subj = "Adirondack - Stu_serv_rec missing"
-                        # sendmail("dsullivan@carthage.edu",
-                        #          "dsullivan@carthage.edu", body, subj)
 
-                        # Dave says stu_serv_rec should NOT be created
-                        # from Adirondack data.  Other offices need
-                        # to create the initial record
-                        # Need to send something to Marietta
-                        # if billcode > 0:
-                        #     q_insert_stuserv_rec = '''
-                        #             INSERT INTO stu_serv_rec (id,
-                        #             sess, yr, rsv_stat, intend_hsg,
-                        #             campus, bldg, room, no_per_room,
-                        #             add_date,bill_code, hous_wd_date)
-                        #             VALUES (?,?,?,?,?,?,?,?,?,?,?)'''
-                        #     q_insert_stuserv_args = (
-                        #         carthid, term, yr, rsvstat, 'R',
-                        #         'MAIN', bldg, room, occupants,
-                        #         checkedindate, billcode,
-                        #         checkedoutdate)
-                        #     print(q_insert_stuserv_rec)
-                        #     print(q_insert_stuserv_args)
-                        #     # engine.execute(q_insert_stuserv_rec,
-                        #     # q_insert_stuserv_args)
+        # # Remove this after testing - only for testing when no
+        # recent changes are found via the API
+        # room_output = settings.ADIRONDACK_TXT_OUTPUT + \
+        #             settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
+        #
+        # fn_notify(room_output, EARL)
 
-                        # else:
-                        #     print("Bill code not found")
-
-        # filepath = settings.ADIRONDACK_CSV_OUTPUT
 
     except Exception as e:
         # print(
@@ -486,9 +473,6 @@ if __name__ == "__main__":
         test = 'prod'
     else:
         test = "test"
-
-
-
 
     sys.exit(main())
 

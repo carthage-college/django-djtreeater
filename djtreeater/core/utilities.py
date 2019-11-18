@@ -184,10 +184,7 @@ def fn_mark_room_posted(stu_id, room_no, hall_code, term, posted,
                        + e.message)
 
 
-
-
 def fn_mark_bill_exported(bill_id, api_server, api_key):
-
     try:
         utcts = fn_get_utcts()
         hashstring = str(utcts) + api_key

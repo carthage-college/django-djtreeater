@@ -13,6 +13,8 @@ import csv
 import argparse
 import logging
 import django
+import string
+from string import maketrans
 # ________________
 # Note to self, keep this here
 # django settings for shell environment
@@ -24,14 +26,14 @@ from django.conf import settings
 from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
-    fn_mark_room_posted, fn_translate_bldg_for_adirondack
+    fn_mark_room_posted, fn_translate_bldg_for_adirondack, \
+    fn_mark_bill_exported
 
 from djimix.core.utils import get_connection, xsql
 # from djzbar.utils.informix import do_sql
 # from djzbar.utils.informix import get_engine
 # from djzbar.settings import INFORMIX_EARL_TEST
 # from djzbar.settings import INFORMIX_EARL_PROD
-
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -68,35 +70,61 @@ parser.add_argument(
 # logger = logging.getLogger(__name__)
 
 
-def fn_check_cx_records(totcod, prd, jndate, stuid, amt):
-    billqry = '''select  SA.id, IR.fullname, ST.subs_no, 
-        SE.jrnl_date, ST.prd, ST.subs, STR.bal_code, ST.tot_code, SE.descr, 
-        SE.ctgry, STR.amt, ST.amt_inv_act, SA.stat 
-        from subtr_rec STR
-        left join subt_rec ST on STR.subs = ST.subs
-        and STR.subs_no = ST.subs_no 
-        and STR.tot_code = ST.tot_code
-        and STR.tot_prd = ST.prd
-        left join sube_rec SE on SE.subs = STR.subs
-        and SE.subs_no = STR.subs_no
-        and SE.sube_no = STR.ent_no
-        left join suba_rec SA on SA.subs = SE.subs
-        and SA.suba_no = SE.subs_no
-        left join id_rec IR on IR.id = SA.id
-        where STR.subs = 'S/A'
-        and STR.tot_code = "{0}"  
-        and STR.tot_prd = "{1}"  
-        and jrnl_date = "{2}"
-        and IR.id = {3}
-        and STR.amt = {4}
-        '''.format(totcod, prd, jndate, stuid, amt)
-    print(billqry)
-    # ret = do_sql(billqry, earl=EARL)
-    # print(ret)
-    if ret is None:
+def fn_check_cx_records(totcod, prd, jndate, stuid, amt, EARL):
+    try:
+        billqry = '''select  SA.id, IR.fullname, ST.subs_no, 
+            SE.jrnl_date, ST.prd, ST.subs, STR.bal_code, ST.tot_code, SE.descr, 
+            SE.ctgry, STR.amt, ST.amt_inv_act, SA.stat 
+            from subtr_rec STR
+            left join subt_rec ST on STR.subs = ST.subs
+            and STR.subs_no = ST.subs_no 
+            and STR.tot_code = ST.tot_code
+            and STR.tot_prd = ST.prd
+            left join sube_rec SE on SE.subs = STR.subs
+            and SE.subs_no = STR.subs_no
+            and SE.sube_no = STR.ent_no
+            left join suba_rec SA on SA.subs = SE.subs
+            and SA.suba_no = SE.subs_no
+            left join id_rec IR on IR.id = SA.id
+            where STR.subs = 'S/A'
+            and STR.tot_code = "{0}"  
+            and STR.tot_prd = "{1}"  
+            and jrnl_date = "{2}"
+            and IR.id = {3}
+            and STR.amt = {4}
+            '''.format(totcod, prd, jndate, stuid, amt)
+        # print(jndate)
+
+        print(billqry)
+        # ret = do_sql(billqry, earl=EARL)
+        # print(ret)
+
+        # Get the current term
+        # print(EARL)
+        connection = get_connection(EARL)
+        # connection closes when exiting the 'with' block
+        print("Connection established")
+        with connection:
+            data_result = xsql(
+                billqry, connection,
+                key=settings.INFORMIX_DEBUG
+            ).fetchall()
+        print("Data returned")
+
+        ret = list(data_result)
+        print(ret)
+
+        # if ret is None:
+        # if ret == []:
+        if not ret:
+                return 0
+        else:
+            return 1
+    except Exception as e:
+        print("Error in misc_fees.py - fn_check_cx_records:  " + str(e))
+        # fn_write_error("Error in misc_fees.py - Main: "
+        #                + e.message)
         return 0
-    else:
-        return 1
 
 
 def fn_set_terms(last_term, current_term):
@@ -312,33 +340,40 @@ def main():
                 # print("CX Current Term = " + current_term)
 
                 if current_term == adir_term:
-                    # print("Match current term " + current_term)
+                    print("Match current term " + current_term)
                     # here we look for a specific item
 
+
+                    # FORMAT DATE FOR SQL
+                    chk_date = datetime.strptime(item_date, '%Y-%m-%d')
+                    new_date = datetime.strftime(chk_date, '%m/%d/%Y')
+
                     # Make sure this charge is not already in CX
-                    x = fn_check_cx_records(tot_code, adir_term, item_date,
-                                            stu_id, amount)
+                    x = fn_check_cx_records(tot_code, adir_term, new_date,
+                                            stu_id, amount, EARL)
+                    print('Return = ' + str(x))
                     if x == 0:
                         pass
                         # print("Item is not in CX database")
                     else:
-                        # print("WARNING:  Matching item exist in CX database")
+                        print("WARNING:  Matching item exist in CX database")
                         continue
                         # this will jump back to the start of the loop
                     # print(the_list)
                     # Make sure item was not pulled previously
                     if int(bill_id) in the_list:
-                        # print("Item " + bill_id + " already in list")
+                        print("Item " + bill_id + " already in list")
                         pass
                     else:
                         # Write the ASCII file and log the entry for
                         # future reference
-                        # print("Write to ASCII csv file")
+                        print("Write to ASCII csv file")
                         rec = []
                         rec.append(i[1])
                         # Limit to 26 characters just in case
                         descr = str(i[5][:26])
-                        descr = descr.translate(None, '!@#$%.,')
+                        spec = str.maketrans(dict.fromkeys('!@#$%.,'))
+                        descr = descr.translate(spec)
                         rec.append(descr.strip())
                         rec.append("1-003-10041")
                         # Round this?
@@ -366,8 +401,7 @@ def main():
 
                         with open(f, 'ab') as wffile:
                             csvwriter = csv.writer(wffile)
-                            csvwriter.writerow(i)
-                        wffile.close()
+                            csvwriter.writerow()
 
                 else:
                     # In case of a charge from the previous term
@@ -377,8 +411,6 @@ def main():
                         pass
                         # print("Item " + str(i[16]) + " already in list")
                     else:
-                        # print("Write to ASCII csv file")
-                        rec = []
                         rec.append(i[1])
                         descr = str(i[5])
                         descr = descr.translate(None, '!@#$%.,')
@@ -423,8 +455,8 @@ def main():
 
             # Mark bill items as exported
             for bill_id in bill_list:
-                # print(bill_id)
-                fn_mark_bill_exported(bill_id, API_server, key)
+                print(bill_id)
+                # fn_mark_bill_exported(bill_id, API_server, key)
 
             # When all done, email csv file?
             # Ideally, write ASCII file to Wilson into fin_post directory
@@ -434,17 +466,17 @@ def main():
                 subject = 'Housing Miscellaneous Fees'
                 body = 'There are housing fees to process via ASCII ' \
                     'post'
-                fn_sendmailfees('dsullivan@carthage.edu',
-                                settings.ADIRONDACK_FROM_EMAIL,
-                                body, subject
-                                )
+                # fn_sendmailfees('dsullivan@carthage.edu',
+                #                 settings.ADIRONDACK_FROM_EMAIL,
+                #                 body, subject
+                #                 )
                 # fn_sendmailfees(settings.ADIRONDACK_ASCII_EMAIL,
                 #                 settings.ADIRONDACK_FROM_EMAIL,
                 #                 body, subject
                 #                 )
 
     except Exception as e:
-        print("Error in misc_fees.py- Main:  " + e.message)
+        print("Error in misc_fees.py- Main:  " + str(e))
         # fn_write_error("Error in misc_fees.py - Main: "
         #                + e.message)
 

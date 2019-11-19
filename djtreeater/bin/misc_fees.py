@@ -369,8 +369,8 @@ def main():
                         # print("Write to ASCII csv file")
                         rec = []
                         rec.append(i[1])
-                        # Limit to 26 characters just in case
 
+                        # Limit to 26 characters just in case
                         tmpstr = str(i[5][:26])
                         descr = ''.join(filter(str.isalnum, tmpstr))
                         rec.append(descr.strip())
@@ -414,8 +414,8 @@ def main():
                         # print("Item " + str(i[16]) + " already in list")
                     else:
                         rec.append(i[1])
-                        descr = str(i[5])
-                        descr = descr.translate(None, '!@#$%.,')
+                        tmpstr = str(i[5][:26])
+                        descr = ''.join(filter(str.isalnum, tmpstr))
                         rec.append(descr.strip())
                         rec.append("1-003-10041")
                         # Round this to two decimals

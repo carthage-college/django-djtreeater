@@ -27,7 +27,7 @@ from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
     fn_mark_room_posted, fn_translate_bldg_for_adirondack, \
-    fn_mark_bill_exported, fn_set_terms
+    fn_mark_bill_exported, fn_set_terms, fn_check_cx_records, fn_sendmailfees
 
 from djimix.core.utils import get_connection, xsql
 # from djzbar.utils.informix import do_sql
@@ -70,62 +70,6 @@ parser.add_argument(
 # logger = logging.getLogger(__name__)
 
 
-def fn_check_cx_records(totcod, prd, jndate, stuid, amt, EARL):
-    try:
-        billqry = '''select  SA.id, IR.fullname, ST.subs_no, 
-            SE.jrnl_date, ST.prd, ST.subs, STR.bal_code, ST.tot_code, SE.descr, 
-            SE.ctgry, STR.amt, ST.amt_inv_act, SA.stat 
-            from subtr_rec STR
-            left join subt_rec ST on STR.subs = ST.subs
-            and STR.subs_no = ST.subs_no 
-            and STR.tot_code = ST.tot_code
-            and STR.tot_prd = ST.prd
-            left join sube_rec SE on SE.subs = STR.subs
-            and SE.subs_no = STR.subs_no
-            and SE.sube_no = STR.ent_no
-            left join suba_rec SA on SA.subs = SE.subs
-            and SA.suba_no = SE.subs_no
-            left join id_rec IR on IR.id = SA.id
-            where STR.subs = 'S/A'
-            and STR.tot_code = "{0}"  
-            and STR.tot_prd = "{1}"  
-            and jrnl_date = "{2}"
-            and IR.id = {3}
-            and STR.amt = {4}
-            '''.format(totcod, prd, jndate, stuid, amt)
-        # print(jndate)
-
-        print(billqry)
-        # ret = do_sql(billqry, earl=EARL)
-        # print(ret)
-
-        # Get the current term
-        # print(EARL)
-        connection = get_connection(EARL)
-        # connection closes when exiting the 'with' block
-        # print("Connection established")
-        with connection:
-            data_result = xsql(
-                billqry, connection,
-                key=settings.INFORMIX_DEBUG
-            ).fetchall()
-        # print("Data returned")
-
-        ret = list(data_result)
-        # print(ret)
-
-        # if ret is None:
-        # if ret == []:
-        if not ret:
-                return 0
-        else:
-            return 1
-    except Exception as e:
-        print("Error in misc_fees.py - fn_check_cx_records:  " + str(e))
-        # fn_write_error("Error in misc_fees.py - Main: "
-        #                + e.message)
-        return 0
-
 def main():
     # set global variable
     global EARL
@@ -143,14 +87,12 @@ def main():
 
     # To run:   python misc_fees.py --database=train --test
 
-    # print(test)
     if test != "test":
         API_server = "carthage_thd_prod_support"
         key = settings.ADIRONDACK_API_SECRET
     else:
         API_server = "carthage_thd_test_support"
         key = settings.ADIRONDACK_TEST_API_SECRET
-
     # print(API_server)
 
     try:
@@ -165,8 +107,8 @@ def main():
 
         # Figure out what terms to limit to
         last_term, current_term = fn_set_terms()
-        print("new last = " + last_term)
-        print("new current = " + current_term)
+        # print("new last = " + last_term)
+        # print("new current = " + current_term)
 
         # Terms in adirondack have a space between sess and year
         # print(current_term)
@@ -438,8 +380,8 @@ def main():
 
             # Mark bill items as exported
             for bill_id in bill_list:
-                print(bill_id)
-                # fn_mark_bill_exported(bill_id, API_server, key)
+                # print(bill_id)
+                fn_mark_bill_exported(bill_id, API_server, key)
 
             # When all done, email csv file?
             # Ideally, write ASCII file to Wilson into fin_post directory
@@ -449,10 +391,10 @@ def main():
                 subject = 'Housing Miscellaneous Fees'
                 body = 'There are housing fees to process via ASCII ' \
                     'post'
-                # fn_sendmailfees('dsullivan@carthage.edu',
-                #                 settings.ADIRONDACK_FROM_EMAIL,
-                #                 body, subject
-                #                 )
+                fn_sendmailfees('dsullivan@carthage.edu',
+                                settings.ADIRONDACK_FROM_EMAIL,
+                                body, subject
+                                )
                 # fn_sendmailfees(settings.ADIRONDACK_ASCII_EMAIL,
                 #                 settings.ADIRONDACK_FROM_EMAIL,
                 #                 body, subject

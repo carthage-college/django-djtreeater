@@ -3,7 +3,7 @@ import os
 import shutil
 import sys
 import time
-import datetime
+import datetime as dt
 from datetime import datetime
 import codecs
 import hashlib
@@ -27,7 +27,7 @@ from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
     fn_mark_room_posted, fn_translate_bldg_for_adirondack, \
-    fn_mark_bill_exported
+    fn_mark_bill_exported, fn_set_terms
 
 from djimix.core.utils import get_connection, xsql
 # from djzbar.utils.informix import do_sql
@@ -126,25 +126,6 @@ def fn_check_cx_records(totcod, prd, jndate, stuid, amt, EARL):
         #                + e.message)
         return 0
 
-
-def fn_set_terms(last_term, current_term):
-
-    # Only RA and RC matter.
-    # print(datetime.today().month)
-    # print(str(datetime.today()))
-    # If we are in spring RC term, last term will be RA with Year - 1
-    # EX:  RC2020 current RA2019 last
-    if datetime.today().month < 7:
-        current_term = 'RC' + str(datetime.today().year)
-        last_term = 'RA' + str(datetime.today().year - 1)
-    # If we are in summer or fall both RA and RC will be current year
-    # EX:  RA2019 current RC2019 last
-    else:
-        current_term = 'RA' + str(datetime.today().year)
-        last_term = 'RC' + str(datetime.today().year)
-    return [last_term, current_term]
-
-
 def main():
     # set global variable
     global EARL
@@ -183,9 +164,9 @@ def main():
         timestr = time.strftime("%H%M")
 
         # Figure out what terms to limit to
-        last_term, current_term = fn_set_terms('', '')
-        # print("new last = " + last_term)
-        # print("new current = " + current_term)
+        last_term, current_term = fn_set_terms()
+        print("new last = " + last_term)
+        print("new current = " + current_term)
 
         # Terms in adirondack have a space between sess and year
         # print(current_term)

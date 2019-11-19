@@ -3,10 +3,12 @@ import csv
 import datetime
 import json
 import calendar
-from datetime import date
+import time
+import datetime as dt
+# from datetime import datetime
+# from datetime import date
 import requests
 import codecs
-import time
 import hashlib
 from time import strftime, strptime
 import smtplib
@@ -22,6 +24,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
+
+from djimix.core.utils import get_connection, xsql
 
 # set up command-line options
 desc = """
@@ -430,3 +434,77 @@ def fn_get_utcts():
 def fn_clear_logger():
     logging.shutdown()
     return "Clear Logger"
+
+def fn_check_cx_records(totcod, prd, jndate, stuid, amt, EARL):
+    try:
+        billqry = '''select  SA.id, IR.fullname, ST.subs_no, 
+            SE.jrnl_date, ST.prd, ST.subs, STR.bal_code, ST.tot_code, SE.descr, 
+            SE.ctgry, STR.amt, ST.amt_inv_act, SA.stat 
+            from subtr_rec STR
+            left join subt_rec ST on STR.subs = ST.subs
+            and STR.subs_no = ST.subs_no 
+            and STR.tot_code = ST.tot_code
+            and STR.tot_prd = ST.prd
+            left join sube_rec SE on SE.subs = STR.subs
+            and SE.subs_no = STR.subs_no
+            and SE.sube_no = STR.ent_no
+            left join suba_rec SA on SA.subs = SE.subs
+            and SA.suba_no = SE.subs_no
+            left join id_rec IR on IR.id = SA.id
+            where STR.subs = 'S/A'
+            and STR.tot_code = "{0}"  
+            and STR.tot_prd = "{1}"  
+            and jrnl_date = "{2}"
+            and IR.id = {3}
+            and STR.amt = {4}
+            '''.format(totcod, prd, jndate, stuid, amt)
+        # print(jndate)
+
+        # print(billqry)
+        # ret = do_sql(billqry, earl=EARL)
+        # print(ret)
+
+        # Get the current term
+        # print(EARL)
+        connection = get_connection(EARL)
+        # connection closes when exiting the 'with' block
+        # print("Connection established")
+        with connection:
+            data_result = xsql(
+                billqry, connection,
+                key=settings.INFORMIX_DEBUG
+            ).fetchall()
+        # print("Data returned")
+
+        ret = list(data_result)
+        # print(ret)
+
+        # if ret is None:
+        # if ret == []:
+        if not ret:
+                return 0
+        else:
+            return 1
+    except Exception as e:
+        print("Error in misc_fees.py - fn_check_cx_records:  " + str(e))
+        # fn_write_error("Error in misc_fees.py - Main: "
+        #                + e.message)
+        return 0
+
+
+def fn_set_terms():
+    # Only RA and RC matter.
+    # print(datetime.today().month)
+    # print(str(datetime.today()))
+    # If we are in spring RC term, last term will be RA with Year - 1
+    # EX:  RC2020 current RA2019 last
+    if dt.date.today().month < 7:
+        current_term = 'RC' + str(dt.date.today().year)
+        last_term = 'RA' + str(dt.date.today().year - 1)
+    # If we are in summer or fall both RA and RC will be current year
+    # EX:  RA2019 current RC2019 last
+    else:
+        current_term = 'RA' + str(dt.date.today().year)
+        last_term = 'RC' + str(dt.date.today().year)
+    return [last_term, current_term]
+

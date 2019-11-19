@@ -14,7 +14,7 @@ import argparse
 import logging
 import django
 import string
-from string import maketrans
+# from string import maketrans
 # ________________
 # Note to self, keep this here
 # django settings for shell environment
@@ -103,16 +103,16 @@ def fn_check_cx_records(totcod, prd, jndate, stuid, amt, EARL):
         # print(EARL)
         connection = get_connection(EARL)
         # connection closes when exiting the 'with' block
-        print("Connection established")
+        # print("Connection established")
         with connection:
             data_result = xsql(
                 billqry, connection,
                 key=settings.INFORMIX_DEBUG
             ).fetchall()
-        print("Data returned")
+        # print("Data returned")
 
         ret = list(data_result)
-        print(ret)
+        # print(ret)
 
         # if ret is None:
         # if ret == []:
@@ -212,7 +212,7 @@ def main():
         # ExportCharges: if -1 then charges will be marked as exported
         # DO NOT mark exported here.  Wait for later step
 
-        print("URL = " + url)
+        # print("URL = " + url)
 
         response = requests.get(url)
         x = json.loads(response.content)
@@ -223,7 +223,6 @@ def main():
             # ----------------------------------------
             # Cleanup previous run CSV files
             # ----------------------------------------
-
             files = os.listdir(settings.ADIRONDACK_TXT_OUTPUT)
             for f in files:
                 ext = f.find(".csv")
@@ -340,7 +339,7 @@ def main():
                 # print("CX Current Term = " + current_term)
 
                 if current_term == adir_term:
-                    print("Match current term " + current_term)
+                    # print("Match current term " + current_term)
                     # here we look for a specific item
 
 
@@ -351,7 +350,7 @@ def main():
                     # Make sure this charge is not already in CX
                     x = fn_check_cx_records(tot_code, adir_term, new_date,
                                             stu_id, amount, EARL)
-                    print('Return = ' + str(x))
+                    # print('Return = ' + str(x))
                     if x == 0:
                         pass
                         # print("Item is not in CX database")
@@ -367,13 +366,13 @@ def main():
                     else:
                         # Write the ASCII file and log the entry for
                         # future reference
-                        print("Write to ASCII csv file")
+                        # print("Write to ASCII csv file")
                         rec = []
                         rec.append(i[1])
                         # Limit to 26 characters just in case
-                        descr = str(i[5][:26])
-                        spec = str.maketrans(dict.fromkeys('!@#$%.,'))
-                        descr = descr.translate(spec)
+
+                        tmpstr = str(i[5][:26])
+                        descr = ''.join(filter(str.isalnum, tmpstr))
                         rec.append(descr.strip())
                         rec.append("1-003-10041")
                         # Round this?
@@ -388,7 +387,9 @@ def main():
                         fee_file = settings.ADIRONDACK_TXT_OUTPUT + tot_code \
                             + "_" + file_descr + "_" + datetimestr + ".csv"
 
-                        with open(fee_file, 'ab') as fee_output:
+                        # with open(fee_file, 'ab') as fee_output:
+                        # Why was I opening with 'ab' (bytes)?
+                        with open(fee_file, 'a') as fee_output:
                             csvwriter = csv.writer(fee_output)
                             csvwriter.writerow(rec)
                         fee_output.close()
@@ -399,9 +400,10 @@ def main():
                         f = cur_file
                         # f = current_term + '_processed.csv'
 
-                        with open(f, 'ab') as wffile:
+                        # with open(f, 'ab') as wffile:
+                        with open(f, 'a') as wffile:
                             csvwriter = csv.writer(wffile)
-                            csvwriter.writerow()
+                            csvwriter.writerow(i)
 
                 else:
                     # In case of a charge from the previous term

@@ -40,31 +40,61 @@ desc = """
     Collect adirondack data Room assignments for stu_serv_rec
 """
 parser = argparse.ArgumentParser(description=desc)
+#
+# def fn_send_mail(to, frum, body, subject):
+#     # email to addresses may come as list
+#     # Stock sendmail in core does not have reply to or split of to emails
+#     msg = MIMEText(body)
+#     msg['To'] = to
+#     msg['From'] = frum
+#     msg['Subject'] = subject
+#     msg['Reply-To'] = frum
+#
+#     print("ready to send")
+#     server = smtplib.SMTP('localhost')
+#     # show communication with the server
+#     # if debug:
+#     #     server.set_debuglevel(True)
+#     try:
+#         # print(msg['To'])
+#         # print(msg['From'])
+#         server.sendmail(frum, to.split(','), msg.as_string())
+#
+#     finally:
+#         server.quit()
+#         # print("Done")
+#         pass
 
-def fn_send_mail(to, frum, body, subject):
-    # email to addresses may come as list
-    # Stock sendmail in core does not have reply to or split of to emails
-    msg = MIMEText(body)
-    msg['To'] = to
-    msg['From'] = frum
-    msg['Subject'] = subject
-    msg['Reply-To'] = frum
 
-    print("ready to send")
-    server = smtplib.SMTP('localhost')
-    # show communication with the server
-    # if debug:
-    #     server.set_debuglevel(True)
-    try:
-        # print(msg['To'])
-        # print(msg['From'])
-        server.sendmail(frum, to.split(','), msg.as_string())
+def fn_get_name(id, EARL):
+    fname = ""
+    Q_GET_NAME = '''select fullname from id_rec 
+       where id = {0}'''.format(id)
 
-    finally:
-        server.quit()
-        # print("Done")
-        pass
+    # ret = do_sql(Q_GET_NAME, key=DEBUG, earl=EARL)
+    connection = get_connection(EARL)
+    # connection closes when exiting the 'with' block
+    with connection:
+        data_result = xsql(
+            Q_GET_NAME, connection,
+            key=settings.INFORMIX_DEBUG
+        ).fetchall()
+    ret = list(data_result)
 
+    if ret is None:
+        # row = ret.fetchone()
+        # if row is None:
+            print("Name not found")
+            fn_write_error(
+                "Error in asign_notify.py - fn_get namen: No "
+                "name found ")
+            quit()
+            fname = str(id)
+        else:
+            for row in ret:
+                fname = row[0]
+
+    return fname
 
 def fn_notify(file, EARL):
     try:

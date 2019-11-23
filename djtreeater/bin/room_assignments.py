@@ -72,33 +72,39 @@ parser.add_argument(
 
 def main():
     try:
-        #    Term will be RA+Current year
-        #  One big push for returning students May 1 for RC term
-        #    Only returning will be in the system, no need to screen out frosh
-        #  Push again June 30 and July 30  for RC term (will include frosh)
-        #  Aug 1 start automation for fall term
-        #  For spring RC+Nextyear push...third Wednesday in December
-        #  Stop automation for RC on last day of class - appr May 20
-        #  Automation could just take the current term
-        #  May 1, June 30, July 30 December  for upcoming term
+        '''
+        Term will be RA + Current year
+        One big push for returning students for RC term happens in 
+        December
+        Only returning will be in the system, no need to screen out 
+        frosh
 
-        # From Aug to Dec, grab all RA current year
-        # From Jan to May 1 grab all RC current year
-        # On MAY 1, grab all RA current year
-        # on June 30 grab all RA current year
-        # On third wednesday in December grab all RC Next
-        # On Next day in Dec, go back to RA Current
+        Push again June 30 and July 30  for RC term (will include 
+        frosh)
+        Aug 1 start automation for fall term
+        Stop automation for RC on last day of class - appr May 20
 
-        # Only options are RC20xx and RA20xx, so I only need to determine
-        # which year to pass during each time frame.
-        # Question is, for spring housing, will both RA and RC need to be
-        # dealt with?
+        May 1, June 30, July 30 December  for upcoming term
 
-        # This is the command needed to run the script
-        # python room_assignments.py --database = train --test - run_mode =
-        # auto
-        # Must specify the database, whether testing or live and whether
-        # user input is required
+        From Aug to Dec, grab all RA current year
+        From Jan to May 1 grab all RC current year
+        On MAY 1, grab all RA current year
+        on June 30 grab all RA current year
+        On third wednesday in December grab all RC Next
+        On Next day in Dec, go back to RA Current
+
+        Only options are RC20xx and RA20xx, so I only need to determine
+        which year to pass during each time frame.
+        Question is, for spring housing, will both RA and RC need to be
+        dealt with?
+                '''
+
+        '''
+        This is the command needed to run the script
+        python room_assignments.py --database=train --test -run_mode=auto
+        Must specify the database, whether testing or live and whether
+        user input is required
+        '''
 
         # set global variable
         global EARL
@@ -131,23 +137,25 @@ def main():
         # print("Seconds from UTC Zero hour = " + str(utcts))
         hashstring = str(utcts) + key
 
-        # Assumes the default UTF-8
+        '''Assumes the default UTF-8'''
         hash_object = hashlib.md5(hashstring.encode())
         datetimestr = time.strftime("%Y%m%d%H%M%S")
 
         if run_mode == "manual":
             # print("Manual Mode")
-            session = input("Enter target session (EX. RA 2019):  ")
+            session = raw_input("Enter target session (EX. RA 2019):  ")
             hall = fn_translate_bldg_for_adirondack(
-                input("Enter Hall code: "))
-            posted = input("Do you want unposted or posted records?  "
+                raw_input("Enter Hall code - use ALL or specifec bldg: "))
+            if hall == 'ALL':
+                hall = ""
+            posted = raw_input("Do you want unposted or posted records?  "
                                "Enter 0 for unposted, 1 for posted, "
                                "2 for changed, 0,2 for both: ")
             # print(posted)
 
         elif run_mode == "auto":
 
-            # Get the current term
+            '''Get the current term'''
             connection = get_connection(EARL)
             # connection closes when exiting the 'with' block
             with connection:
@@ -168,7 +176,7 @@ def main():
                     session = row[0]
                     hall = ''
                     posted = '0,2'
-            # IMPORTANT! won't work if string has any spaces.  NO SPACES
+                '''IMPORTANT! won't work if string has any spaces. NO SPACES'''
 
         url = "https://carthage.datacenter.adirondacksolutions.com/" \
               + API_server + "/apis/thd_api.cfc?" \
@@ -188,19 +196,20 @@ def main():
         # + "&" \
         # "HallCode=" + 'SWE'
 
+        '''
+        DEFINITIONS
+        Posted: 0 returns only NEW unposted,
+        1 returns posted, as in out to our system
+        2 changed or cancelled
+        PostAssignments: -1 will mark the record as posted.
+        CurrentFuture: -1 returns only current and future
+        Cancelled: -1 is for cancelled, 0 for not cancelled
 
-        # DEFINITIONS
-        # Posted: 0 returns only NEW unposted,
-        # 1 returns posted, as in out to our system
-        # 2 changed or cancelled
-        # PostAssignments: -1 will mark the record as posted.
-        # CurrentFuture: -1 returns only current and future
-        # Cancelled: -1 is for cancelled, 0 for not cancelled
+        'In theory, every room assignment in Adirondack should have
+        a bill code'''
 
-        print("URL = " + url)
+        # print("URL = " + url)
 
-        # In theory, every room assignment in Adirondack should have
-        # a bill code
 
         response = requests.get(url)
         x = json.loads(response.content)
@@ -265,19 +274,20 @@ def main():
                                                 room_type,
                                                 roomassignmentid,
                                                 session, API_server, key)
-                    # Intenhsg can b R = Resident, O = Off-Campus,
-                    # C = Commuter
-                    # This if routine is needed because the adirondack
-                    # hall codes match to multiple descriptions and
-                    # hall descriptions have added qualifiers such as
-                    # FOFF, MOFF, UNF, LOCA that are not available
-                    # elsewhere using the API.  Have to parse it to
-                    # assign a generic room
-                    # For non residents, we have a generic room for
-                    # CX and a dummy room on the Adirondack side
-                    # So we need two variables, on for Adirondack and
-                    # one for CX.
-
+                    '''
+                     Intenhsg can be: 
+                     R = Resident, O = Off-Campus, C = Commuter
+                     This routine is needed because the adirondack
+                     hall codes match to multiple descriptions and
+                     hall descriptions have added qualifiers such as
+                     FOFF, MOFF, UNF, LOCA that are not available
+                     elsewhere using the API.  Have to parse it to
+                     assign a generic room
+                     For non residents, we have a generic room for
+                     CX and a dummy room on the Adirondack side
+                     So we need two variables, on for Adirondack and
+                     one for CX.
+                     '''
                     adir_room = i[4]
 
                     if bldg == 'CMTR':
@@ -311,8 +321,8 @@ def main():
                     csvwriter = csv.writer(room_output,
                                            quoting=csv.QUOTE_NONNUMERIC
                                            )
-                    # Need to write translated fields if csv is to
-                    # be created
+                    '''Need to write translated fields if csv is to
+                    be created'''
                     csvwriter.writerow([carthid, bldgname, bldg,
                                         floor, room, bed, room_type,
                                         occupancy, roomusage,
@@ -326,9 +336,11 @@ def main():
                       # print(str(carthid) + ', ' + str(billcode) + ', '
                     #       + str(bldg) + ', ' + str(room) + ', ' +
                     #       + str(room_type))
-                    # Validate if the stu_serv_rec exists first
-                    # update stu_serv_rec id, sess, yr, rxv_stat,
-                    # intend_hsg, campus, bldg, room, bill_code
+                    '''
+                      Validate if the stu_serv_rec exists first
+                       update stu_serv_rec id, sess, yr, rxv_stat,
+                      intend_hsg, campus, bldg, room, bill_code
+                      '''
 
                     q_validate_stuserv_rec = '''
                                   select id, sess, yr, rsv_stat,
@@ -410,6 +422,7 @@ def main():
                                     fn_notify(room_output, EARL)
 
                             else:
+                                # NO STU_SERV_REC -  should not happen
                                 # print("fetch retuned none - No "
                                 #       "stu_serv_rec for student "
                                 #       + carthid + " for term " + term)
@@ -436,13 +449,12 @@ def main():
                         #        + term + ".. Please inquire why."
                         # subj = "Adirondack - Stu_serv_rec missing"
 
-        # # # Remove this after testing - only for testing when no
-        # # recent changes are found via the API
-        # # room_output = settings.ADIRONDACK_TXT_OUTPUT + \
-        # #             settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
-        # #
-        # # fn_notify(room_output, EARL)
-
+        # Remove this after testing - only for testing when no
+        # recent changes are found via the API
+        room_file = settings.ADIRONDACK_TXT_OUTPUT + \
+                    settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
+        if run_mode == 'auto':
+            fn_notify(room_file, EARL)
 
     except Exception as e:
         # print(

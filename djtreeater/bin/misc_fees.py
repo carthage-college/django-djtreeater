@@ -85,7 +85,7 @@ def main():
         EARL = None
     # establish database connection
 
-    # To run:   python misc_fees.py --database=train --test
+    """To run:   python misc_fees.py --database=train --test  """
 
     if test != "test":
         API_server = "carthage_thd_prod_support"
@@ -105,19 +105,18 @@ def main():
         datetimestr = time.strftime("%Y%m%d")
         timestr = time.strftime("%H%M")
 
-        # Figure out what terms to limit to
+        """Figure out what terms to limit to"""
         last_term, current_term = fn_set_terms()
         # print("new last = " + last_term)
         # print("new current = " + current_term)
 
-        # Terms in adirondack have a space between sess and year
+        """Terms in adirondack have a space between sess and year"""
         # print(current_term)
         adirondack_term = current_term[:2] + " " + current_term[2:]
         # print(adirondack_term)
 
-        # ----------------------------------------
-        # Get data from Adirondack
-        # ----------------------------------------
+        """Get data from Adirondack"""
+
         url = "https://carthage.datacenter.adirondacksolutions.com/" \
             +API_server+"/apis/thd_api.cfc?" \
             "method=studentBILLING&" \
@@ -130,11 +129,12 @@ def main():
 
             # + "&" + "STUDENTNUMBER=1501237"
 
-        # DEFINIIONS
-        # Exported: -1 exported will be included, 0 only non-exported
-        # ExportCharges: if -1 then charges will be marked as exported
-        # DO NOT mark exported here.  Wait for later step
-
+        """
+        DEFINIIONS
+        Exported: -1 exported will be included, 0 only non-exported
+        ExportCharges: if -1 then charges will be marked as exported
+        DO NOT mark exported here.  Wait for later step
+        """
         # print("URL = " + url)
 
         response = requests.get(url)
@@ -143,9 +143,9 @@ def main():
             print("No new data found")
             pass
         else:
-            # ----------------------------------------
-            # Cleanup previous run CSV files
-            # ----------------------------------------
+            """
+            Cleanup previous run CSV files
+            """
             files = os.listdir(settings.ADIRONDACK_TXT_OUTPUT)
             for f in files:
                 ext = f.find(".csv")
@@ -156,14 +156,14 @@ def main():
                                 "ascii_archive/" +
                                 f[:ext] + "_" + timestr + f[ext:])
 
-            # ----------------------------------------
-            # Make sure no duplicate records get into the system
-            # ----------------------------------------
-            #    Use the STUDENTBILLINGINTERNALID number - uniquie row id for
-            #    each adirondack billing entry
-            #    Store the numbers in a txt file
-            #    Read that file into a list and
-            #    IF the new data pulls the same ID number, pass through
+            """
+            Make sure no duplicate records get into the system
+            Use the STUDENTBILLINGINTERNALID number - uniquie row id for
+            each adirondack billing entry
+            Store the numbers in a txt file
+            Read that file into a list and
+            IF the new data pulls the same ID number, pass through
+            """
 
             # ------------------------------------------
             # Step 1 would be to build the list of items already written to
@@ -176,10 +176,10 @@ def main():
             last_file = settings.ADIRONDACK_TXT_OUTPUT + 'billing_logs/' + \
                 last_term + '_processed.csv'
 
-            # Initialize a list of record IDs
+            """Initialize a list of record IDs -- previously processed rows"""
             the_list = []
 
-            # Make sure file for the current term has been created
+            """ Make sure file for the current term has been created"""
             if os.path.isfile(cur_file):
                 fst = cur_file
                 with open(fst, 'r') as ffile:
@@ -192,15 +192,14 @@ def main():
                         # if not ''.join(row).strip():
                         assign_id = int(row[16].strip())
                         the_list.append(assign_id)
-                        # print(the_list)
 
                 ffile.close()
 
             else:
-                print ("No file")
-        #         fn_write_billing_header(cur_file)
-        #
-            # For extra insurance, include last term items in the list
+                # print ("No file")
+                fn_write_billing_header(cur_file)
+#
+            """ For extra insurance, include last term items in the list"""
             if os.path.isfile(last_file):
                 # print ("last_file exists")
                 lst = last_file
@@ -213,34 +212,31 @@ def main():
                         the_list.append(assign_id)
                 lfile.close()
             else:
-                print ("No file")
-        #         fn_write_billing_header(last_file)
+                # print ("No file")
+                fn_write_billing_header(last_file)
 
-            # List of previously processed rows
-            # print(the_list)
 
-            # ------------------------------------------
-            #  Step 2 would be to loop through the new charges returned
-            #  from adirondack in the API query
-            # ------------------------------------------
+            """
+            Step 2 would be to loop through the new charges returned
+            from adirondack in the API query
+            """
 
-            # Note.  Each account code must be a separate file for ASCII Post
-            # 2010  Improper Checkout
-            # 2011  Extended stay charge
-            # 2031   Recore
-            # 2040  Lockout fee
-            # Room rental fees are not for ASCII post and will not be
-            # calculated in Adirondack
+            """ 
+            Note.  Each account code must be a separate file for ASCII Post
+            2010  Improper Checkout
+            2011  Extended stay charge
+            2031   Recore
+            2040  Lockout fee
+            Room rental fees are not for ASCII post and will not be
+            calculated in Adirondack
+            """
 
             # Adirondack dataset
             bill_list = []
-        #
+
             for i in x['DATA']:
-                # --------------------
                 # As the csv is being created
                 # Compare each new file's line ID
-
-                # variables for readability
                 adir_term = i[4][:2] + i[4][-4:]
                 ascii_term = i[4][:2] + i[4][-2:]
 
@@ -248,10 +244,6 @@ def main():
                 amount = '{:.2f}'.format(i[2])
                 bill_id = str(i[16])
                 bill_list.append(bill_id)
-
-                # print(bill_id)
-                # print(str(bill_list))
-
                 stu_id = str(i[0])
                 item_date = i[1][-4:] + "-" + i[1][:2] + "-" + i[1][3:5]
                 tot_code = str(i[6])
@@ -263,14 +255,13 @@ def main():
 
                 if current_term == adir_term:
                     # print("Match current term " + current_term)
-                    # here we look for a specific item
+                    """ here we look for a specific item"""
 
-
-                    # FORMAT DATE FOR SQL
+                    """ FORMAT DATE FOR SQL"""
                     chk_date = datetime.strptime(item_date, '%Y-%m-%d')
                     new_date = datetime.strftime(chk_date, '%m/%d/%Y')
 
-                    # Make sure this charge is not already in CX
+                    """Make sure this charge is not already in CX"""
                     x = fn_check_cx_records(tot_code, adir_term, new_date,
                                             stu_id, amount, EARL)
                     # print('Return = ' + str(x))
@@ -280,25 +271,24 @@ def main():
                     else:
                         print("WARNING:  Matching item exist in CX database")
                         continue
-                        # this will jump back to the start of the loop
                     # print(the_list)
-                    # Make sure item was not pulled previously
+
+                    """Make sure item was not pulled previously"""
                     if int(bill_id) in the_list:
                         print("Item " + bill_id + " already in list")
                         pass
                     else:
-                        # Write the ASCII file and log the entry for
-                        # future reference
+                        """Write the ASCII file and log the entry for
+                           future reference"""
                         # print("Write to ASCII csv file")
                         rec = []
                         rec.append(i[1])
 
-                        # Limit to 26 characters just in case
+                        """Limit to 26 characters just in case"""
                         tmpstr = str(i[5][:26])
                         descr = ''.join(filter(str.isalnum, tmpstr))
                         rec.append(descr.strip())
                         rec.append("1-003-10041")
-                        # Round this?
                         rec.append('{:.2f}'.format(i[2]))
                         rec.append(stu_id)
                         rec.append("S/A")
@@ -310,28 +300,20 @@ def main():
                         fee_file = settings.ADIRONDACK_TXT_OUTPUT + tot_code \
                             + "_" + file_descr + "_" + datetimestr + ".csv"
 
-                        # with open(fee_file, 'ab') as fee_output:
-                        # Why was I opening with 'ab' (bytes)?
                         with open(fee_file, 'a') as fee_output:
                             csvwriter = csv.writer(fee_output)
                             csvwriter.writerow(rec)
                         fee_output.close()
 
-                        # Write record of item to PROCESSED list
-                        # print("Write item " + str(
-                        #     i[16]) + " to current term file")
+                        """Write record of item to PROCESSED list"""
                         f = cur_file
-                        # f = current_term + '_processed.csv'
 
-                        # with open(f, 'ab') as wffile:
                         with open(f, 'a') as wffile:
                             csvwriter = csv.writer(wffile)
                             csvwriter.writerow(i)
 
                 else:
-                    # In case of a charge from the previous term
-                    # print(the_list)
-                    # print("Match last term " + last_term)
+                    """In case of a charge from the previous term"""
                     if int(i[16]) in the_list:
                         pass
                         # print("Item " + str(i[16]) + " already in list")
@@ -353,20 +335,17 @@ def main():
                         fee_file = settings.ADIRONDACK_TXT_OUTPUT + tot_code \
                             + "_" + file_descr + "_" + datetimestr + ".csv"
 
-                        with open(fee_file, 'ab') as fee_output:
+                        with open(fee_file, 'a') as fee_output:
                             csvwriter = csv.writer(fee_output)
                             csvwriter.writerow(rec)
                         fee_output.close()
 
-                        # Write record of item to PROCESSED list
-                        # NOTE--QUOTE_MINIMAL is because timestamp has a comma
-                        # print("Write item " + str(
-                        #     i[16]) + " to current term file")
-
+                        """Write record of item to PROCESSED list"""
+                        """NOTE--QUOTE_MINIMAL is because timestamp 
+                            has a comma"""
                         f = cur_file
-                        # f = current_term + '_processed.csv'
 
-                        with open(f, 'ab') as wffile:
+                        with open(f, 'a') as wffile:
                             csvwriter = csv.writer(wffile)
                             csvwriter.writerow(i)
                         wffile.close()
@@ -378,32 +357,26 @@ def main():
                         or f.startswith("2031") or f.startswith("2040")):
                     csv_exists = True
 
-            # Mark bill items as exported
+            """Mark bill items as exported"""
             for bill_id in bill_list:
                 # print(bill_id)
                 fn_mark_bill_exported(bill_id, API_server, key)
 
-            # When all done, email csv file?
-            # Ideally, write ASCII file to Wilson into fin_post directory
+            """When all done, email csv file"""
             if csv_exists == True:
-                # print("File created, send")
                 # print("EMAIL TO " + str(settings.ADIRONDACK_ASCII_EMAIL))
                 subject = 'Housing Miscellaneous Fees'
                 body = 'There are housing fees to process via ASCII ' \
                     'post'
-                fn_sendmailfees('dsullivan@carthage.edu',
+
+                fn_sendmailfees(settings.ADIRONDACK_ASCII_EMAIL,
                                 settings.ADIRONDACK_FROM_EMAIL,
                                 body, subject
                                 )
-                # fn_sendmailfees(settings.ADIRONDACK_ASCII_EMAIL,
-                #                 settings.ADIRONDACK_FROM_EMAIL,
-                #                 body, subject
-                #                 )
 
     except Exception as e:
-        print("Error in misc_fees.py- Main:  " + str(e))
-        # fn_write_error("Error in misc_fees.py - Main: "
-        #                + e.message)
+        fn_write_error("Error in misc_fees.py - Main: "
+                       + repr(e))
 
 if __name__ == "__main__":
     args = parser.parse_args()

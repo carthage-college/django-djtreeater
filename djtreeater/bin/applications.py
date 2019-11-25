@@ -17,26 +17,26 @@ import requests
 import csv
 
 from djtreeater.core.utilities import fn_write_error, \
-    fn_write_application_header, fn_get_utcts
+    fn_write_application_header, fn_get_utcts, fn_encode_rows_to_utf8
 
 # set up command-line options
 desc = """
     Collect adirondack data from applications for housing
 """
 
-def encode_rows_to_utf8(rows):
-    encoded_rows = []
-    for row in rows:
-        try:
-            encoded_row = []
-            for value in row:
-                if isinstance(value, basestring):
-                    value = value.decode('cp1252').encode("utf-8")
-                encoded_row.append(value)
-            encoded_rows.append(encoded_row)
-        except Exception as e:
-            fn_write_error("Error in encoded_rows routine " + e.message)
-    return encoded_rows
+# def encode_rows_to_utf8(rows):
+#     encoded_rows = []
+#     for row in rows:
+#         try:
+#             encoded_row = []
+#             for value in row:
+#                 if isinstance(value, basestring):
+#                     value = value.decode('cp1252').encode("utf-8")
+#                 encoded_row.append(value)
+#             encoded_rows.append(encoded_row)
+#         except Exception as e:
+#             fn_write_error("Error in encoded_rows routine " + e.message)
+#     return encoded_rows
 
 
 def main():
@@ -93,7 +93,7 @@ def main():
             fn_write_application_header()
 
             print("Start Loop")
-            with open(settings.ADIRONDACK_APPLICATONS, 'ab') as output:
+            with open(settings.ADIRONDACK_APPLICATONS, 'a') as output:
                 for i in x['DATA']:
                     print(i)
                     csvWriter = csv.writer(output,
@@ -102,7 +102,7 @@ def main():
 
 
     except Exception as e:
-        print("Error in adirondack_applicationss_api.py- Main:  " + e.message)
+        print("Error in adirondack_applicationss_api.py- Main:  " + repr(e))
         # fn_write_error("Error in adirondack_std_billing_api.py - Main: "
         #                + e.message)
 

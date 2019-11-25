@@ -24,11 +24,11 @@ from djtools.utils.mail import send_mail
 # from djzbar.settings import INFORMIX_EARL_SANDBOX
 # from djzbar.settings import INFORMIX_EARL_TEST
 # from djzbar.settings import INFORMIX_EARL_PROD
-from djtreeater.sql.adirondack import ADIRONDACK_QUERY, Q_GET_TERM
+from djtreeater.sql.adirondack import Q_GET_TERM
 from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
-    fn_mark_room_posted, fn_translate_bldg_for_adirondack
+    fn_mark_room_posted, fn_translate_bldg_for_adirondack, fn_send_mail
 from djtreeater.core.adiron_asgn_ntfy import fn_notify
 from djimix.core.utils import get_connection, xsql
 
@@ -72,7 +72,7 @@ parser.add_argument(
 
 def main():
     try:
-        '''
+        """
         Term will be RA + Current year
         One big push for returning students for RC term happens in 
         December
@@ -97,14 +97,14 @@ def main():
         which year to pass during each time frame.
         Question is, for spring housing, will both RA and RC need to be
         dealt with?
-                '''
+                """
 
-        '''
+        """
         This is the command needed to run the script
         python room_assignments.py --database=train --test -run_mode=auto
         Must specify the database, whether testing or live and whether
         user input is required
-        '''
+        """
 
         # set global variable
         global EARL
@@ -132,12 +132,13 @@ def main():
 
         # print(API_server)
         # print(key)
+        # print(EARL)
 
         utcts = fn_get_utcts()
         # print("Seconds from UTC Zero hour = " + str(utcts))
         hashstring = str(utcts) + key
 
-        '''Assumes the default UTF-8'''
+        """Assumes the default UTF-8"""
         hash_object = hashlib.md5(hashstring.encode())
         datetimestr = time.strftime("%Y%m%d%H%M%S")
 
@@ -155,7 +156,7 @@ def main():
 
         elif run_mode == "auto":
 
-            '''Get the current term'''
+            """Get the current term"""
             connection = get_connection(EARL)
             # connection closes when exiting the 'with' block
             with connection:
@@ -165,7 +166,6 @@ def main():
                 ).fetchall()
             ret = list(data_result)
 
-            # ret = do_sql(Q_GET_TERM, key=DEBUG, earl=EARL)
             if ret is None:
                 print("Term not found")
                 # fn_write_error(
@@ -176,7 +176,7 @@ def main():
                     session = row[0]
                     hall = ''
                     posted = '0,2'
-                '''IMPORTANT! won't work if string has any spaces. NO SPACES'''
+                """IMPORTANT! won't work if string has any spaces. NO SPACES"""
 
         url = "https://carthage.datacenter.adirondacksolutions.com/" \
               + API_server + "/apis/thd_api.cfc?" \
@@ -187,9 +187,9 @@ def main():
                   "h=" + hash_object.hexdigest() + "&" \
                   "TimeFrameNumericCode=" + session + "&" \
                   "Posted=" + posted + "&" \
-                                                                                                                     "HALLCODE=" + hall
-        # + "&" \
-        # "STUDENTNUMBER=" + "1496904"
+                  "HALLCODE=" + hall
+                  #   + "&" \
+                  # "STUDENTNUMBER=" + "1537167"
         # "CurrentFuture=-1" + "&" \
         #                      "Ghost=0" + "&" \
         # NOTE:  HALLCODE can be empty
@@ -210,7 +210,6 @@ def main():
 
         # print("URL = " + url)
 
-
         response = requests.get(url)
         x = json.loads(response.content)
         if not x['DATA']:
@@ -228,240 +227,263 @@ def main():
 
             room_data = fn_encode_rows_to_utf8(x['DATA'])
             # Write header
-            fn_write_assignment_header(room_file)
-            with open(room_file, 'ab') as room_output:
-                for i in room_data:
+            try:
+                # print("Writing Header")
+                fn_write_assignment_header(room_file)
+                # print("Opening file to write")
+                with open(room_file, 'a') as room_output:
+                    for i in room_data:
+                        carthid = i[0]
+                        bldgname = i[1]
+                        adir_hallcode = i[2]
+                        floor = i[3]
+                        bed = i[5]
+                        room_type = i[6]
+                        occupancy = i[7]
+                        roomusage = i[8]
+                        timeframenumericcode = i[9]
+                        """Note: Checkout date is returning in the checkout
+                          field from the API rather than checkoutdate field"""
+                        checkin = i[10]
+                        checkedindate = i[11]
+                        # if i[11] == None:
+                        #     checkedindate = None
+                        # else:
+                        #     d1 = datetime.strptime(i[11],
+                        #                            "%B, "
+                        #                            "%d %Y "
+                        #                            "%H:%M:%S")
+                        #     checkedindate = d1.strftime("%m-%d-%Y")
+                        # print("ADD DATE = " + str(checkin))
+                        checkout = i[12]
+                        checkedoutdate = i[13]
+                        po_box = i[14]
+                        po_box_combo = i[15]
+                        canceled = i[16]
+                        canceldate = i[17]
+                        cancelnote = i[18]
+                        cancelreason = i[19]
+                        ghost = i[20]
+                        posted = i[21]
+                        roomassignmentid = i[22]
+                        sess = i[9][:2]
+                        year = i[9][-4:]
+                        term = i[9]
+                        # occupants = i[7]
+                        bldg = fn_fix_bldg(i[2])
+                        billcode = fn_get_bill_code(carthid, str(bldg),
+                                                    room_type,
+                                                    roomassignmentid,
+                                                    session, API_server, key)
+                        '''
+                        Intenhsg can be: 
+                        R = Resident, O = Off-Campus, C = Commuter
+                        This routine is needed because the adirondack
+                        hall codes match to multiple descriptions and
+                        hall descriptions have added qualifiers such as
+                        FOFF, MOFF, UNF, LOCA that are not available
+                        elsewhere using the API.  Have to parse it to
+                        assign a generic room
+                        For non residents, we have a generic room for
+                        CX and a dummy room on the Adirondack side
+                        So we need two variables, on for Adirondack and
+                        one for CX.
+                        '''
+                        adir_room = i[4]
 
-                    carthid = i[0]
-                    bldgname = i[1]
-                    adir_hallcode = i[2]
-                    floor = i[3]
-                    bed = i[5]
-                    room_type = i[6]
-                    occupancy = i[7]
-                    roomusage = i[8]
-                    timeframenumericcode = i[9]
-                    # Note: Checkout date is returning in the checkout
-                    # field from the API rather than checkoutdate field
-                    checkin = i[10]
-                    checkedindate = i[11]
-                    # if i[11] == None:
-                    #     checkedindate = None
-                    # else:
-                    #     d1 = datetime.strptime(i[11],
-                    #                            "%B, "
-                    #                            "%d %Y "
-                    #                            "%H:%M:%S")
-                    #     checkedindate = d1.strftime("%m-%d-%Y")
-                    # print("ADD DATE = " + str(checkin))
-                    checkout = i[12]
-                    checkedoutdate = i[13]
-                    po_box = i[14]
-                    po_box_combo = i[15]
-                    canceled = i[16]
-                    canceldate = i[17]
-                    cancelnote = i[18]
-                    cancelreason = i[19]
-                    ghost = i[20]
-                    posted = i[21]
-                    roomassignmentid = i[22]
-                    sess = i[9][:2]
-                    year = i[9][-4:]
-                    term = i[9]
-                    # occupants = i[7]
-                    bldg = fn_fix_bldg(i[2])
-                    billcode = fn_get_bill_code(carthid, str(bldg),
-                                                room_type,
-                                                roomassignmentid,
-                                                session, API_server, key)
-                    '''
-                     Intenhsg can be: 
-                     R = Resident, O = Off-Campus, C = Commuter
-                     This routine is needed because the adirondack
-                     hall codes match to multiple descriptions and
-                     hall descriptions have added qualifiers such as
-                     FOFF, MOFF, UNF, LOCA that are not available
-                     elsewhere using the API.  Have to parse it to
-                     assign a generic room
-                     For non residents, we have a generic room for
-                     CX and a dummy room on the Adirondack side
-                     So we need two variables, on for Adirondack and
-                     one for CX.
-                     '''
-                    adir_room = i[4]
+                        if bldg == 'CMTR':
+                            intendhsg = 'C'
+                            room = bldgname[(bldgname.find('_') + 1)
+                                            - len(bldgname):]
+                        elif bldg == 'OFF':
+                            intendhsg = 'O'
+                            room = bldgname[(bldgname.find('_') + 1)
+                                            - len(bldgname):]
+                        elif bldg == 'ABRD':
+                            intendhsg = 'O'
+                            room = bldgname[(bldgname.find('_') + 1)
+                                            - len(bldgname):]
+                        elif bldg == 'UN':
+                            intendhsg = 'O'
+                            room = bldgname[(bldgname.find('_') + 1)
+                                            - len(bldgname):]
+                        else:
+                            intendhsg = 'R'
+                            room = i[4]
 
-                    if bldg == 'CMTR':
-                        intendhsg = 'C'
-                        room = bldgname[(bldgname.find('_') + 1)
-                                        - len(bldgname):]
-                    elif bldg == 'OFF':
-                        intendhsg = 'O'
-                        room = bldgname[(bldgname.find('_') + 1)
-                                        - len(bldgname):]
-                    elif bldg == 'ABRD':
-                        intendhsg = 'O'
-                        room = bldgname[(bldgname.find('_') + 1)
-                                        - len(bldgname):]
-                    elif bldg == 'UN':
-                        intendhsg = 'O'
-                        room = bldgname[(bldgname.find('_') + 1)
-                                        - len(bldgname):]
-                    else:
-                        intendhsg = 'R'
-                        room = i[4]
+                        if posted == 2 and canceled == -1:
+                            billcode = 'NOCH'
 
-                    if posted == 2 and canceled == -1:
-                        billcode = 'NOCH'
+                        if canceled == -1 and cancelreason == 'Withdrawal':
+                            rsvstat = 'W'
+                        else:
+                            rsvstat = 'R'
 
-                    if canceled == -1 and cancelreason == 'Withdrawal':
-                        rsvstat = 'W'
-                    else:
-                        rsvstat = 'R'
+                        # print("write room output")
+                        csvwriter = csv.writer(room_output,
+                                               quoting=csv.QUOTE_NONNUMERIC
+                                               )
+                        '''Need to write translated fields if csv is to
+                           be created'''
+                        csvwriter.writerow([carthid, bldgname, bldg,
+                                            floor, room, bed, room_type,
+                                            occupancy, roomusage,
+                                            timeframenumericcode, checkin,
+                                            checkedindate, checkout,
+                                            checkedoutdate, po_box,
+                                            po_box_combo, canceled,
+                                            canceldate, cancelnote,
+                                            cancelreason, ghost, posted,
+                                            roomassignmentid, billcode])
+                          # print(str(carthid) + ', ' + str(billcode) + ', '
+                        #       + str(bldg) + ', ' + str(room) + ', ' +
+                        #       + str(room_type))
+                        '''
+                        Validate if the stu_serv_rec exists first
+                        update stu_serv_rec id, sess, yr, rxv_stat,
+                        intend_hsg, campus, bldg, room, bill_code
+                        '''
 
-                    csvwriter = csv.writer(room_output,
-                                           quoting=csv.QUOTE_NONNUMERIC
-                                           )
-                    '''Need to write translated fields if csv is to
-                    be created'''
-                    csvwriter.writerow([carthid, bldgname, bldg,
-                                        floor, room, bed, room_type,
-                                        occupancy, roomusage,
-                                        timeframenumericcode, checkin,
-                                        checkedindate, checkout,
-                                        checkedoutdate, po_box,
-                                        po_box_combo, canceled,
-                                        canceldate, cancelnote,
-                                        cancelreason, ghost, posted,
-                                        roomassignmentid, billcode])
-                      # print(str(carthid) + ', ' + str(billcode) + ', '
-                    #       + str(bldg) + ', ' + str(room) + ', ' +
-                    #       + str(room_type))
-                    '''
-                      Validate if the stu_serv_rec exists first
-                       update stu_serv_rec id, sess, yr, rxv_stat,
-                      intend_hsg, campus, bldg, room, bill_code
-                      '''
-
-                    q_validate_stuserv_rec = '''
-                                  select id, sess, yr, rsv_stat,
-                                  intend_hsg, campus, bldg, room,
-                                  no_per_room,
-                                  add_date,
-                                  bill_code, hous_wd_date
-                                  from stu_serv_rec
-                                  where yr = {2}
-                                  and sess  = "{1}"
-                                  and id = {0}'''.format(carthid,
-                                                         sess, year)
-                    print(q_validate_stuserv_rec)
-                    connection = get_connection(EARL)
-                    # connection closes when exiting the 'with' block
-                    with connection:
-                        data_result = xsql(
-                            q_validate_stuserv_rec, connection,
-                            key=settings.INFORMIX_DEBUG
-                        ).fetchall()
-                    ret = list(data_result)
-
-                    if ret is not None:
-                        if billcode > 0:
-                            # compare rsv_stat, intend_hsg, bldg, room,
-                            # billcode
-                            # Update only if something has changed
-                            # print("Record found " + carthid)
-                            for row in ret:
-                                if row[3] != rsvstat \
-                                        or row[4] != intendhsg \
-                                        or row[6] != bldg \
-                                        or row[7] != room \
-                                        or row[10] != billcode:
-                                    print("Need to update stu_serv_rec")
-                                    q_update_stuserv_rec = '''
-                                        UPDATE stu_serv_rec set rsv_stat = ?,
-                                        intend_hsg = ?, campus = ?,
-                                        bldg = ?, room = ?,
-                                        bill_code = ?
-                                        where id = ? and sess = ? and
-                                        yr = ?'''
-                                    q_update_stuserv_args = (rsvstat,
-                                                             intendhsg,
-                                                             "MAIN", bldg,
-                                                             room,
-                                                             billcode,
-                                                             carthid,
+                        q_validate_stuserv_rec = '''
+                                      select id, sess, yr, rsv_stat,
+                                      intend_hsg, campus, bldg, room,
+                                      no_per_room,
+                                      add_date,
+                                      bill_code, hous_wd_date
+                                      from stu_serv_rec
+                                      where yr = {2}
+                                      and sess  = "{1}"
+                                      and id = {0}'''.format(carthid,
                                                              sess, year)
-                                    connection = get_connection(EARL)
-                                    # connection closes when exiting the
-                                    # 'with' block
-                                    with connection:
-                                        cur = connection.cursor()
-                                        cur.execute(q_update_stuserv_rec,
-                                                    [q_update_stuserv_args])
-                                        cur.close()
-                                        connection.commit()
-                                        connection.close()
-                                    print("Mark room as posted...")
-                                    fn_mark_room_posted(carthid,
-                                                        adir_room,
-                                                        adir_hallcode,
-                                                        term, posted,
-                                                        roomassignmentid,
-                                                        API_server, key)
-                                    # Notify Marietta of changes
-                                    fn_notify(room_output, EARL)
+                        # print(q_validate_stuserv_rec)
+                        connection = get_connection(EARL)
+                        """ connection closes when exiting the 'with' block """
+                        with connection:
+                            data_result = xsql(
+                                q_validate_stuserv_rec, connection,
+                                key=settings.INFORMIX_DEBUG
+                            ).fetchall()
+                        ret = list(data_result)
+                        connection.close()
+                        print(ret)
 
-                                else:
-                                    print("No change needed in "
-                                           "stu_serv_rec")
-                                    fn_mark_room_posted(carthid, adir_room,
-                                                        adir_hallcode, term,
-                                                        posted,
-                                                        roomassignmentid,
-                                                        API_server, key)
-                                    # Notify Marietta of changes
-                                    fn_notify(room_output, EARL)
+
+                        if ret is not None:
+                            print("Stu Serv Rec Found")
+                            if billcode != 0:
+                                """compare rsv_stat, intend_hsg, bldg, room,
+                                billcode -- Update only if something has 
+                                changed"""
+                                print("Record found " + carthid)
+
+                                for row in ret:
+                                    print("Read rows")
+                                    print(row)
+                                    if row[3] != rsvstat \
+                                            or row[4] != intendhsg \
+                                            or row[6] != bldg \
+                                            or row[7] != room \
+                                            or row[10] != billcode:
+                                        print(rsvstat)
+                                        print(intendhsg)
+                                        print(bldg)
+                                        print(room)
+                                        print(billcode)
+
+                                        # print("Need to update stu_serv_rec")
+                                        q_update_stuserv_rec = '''
+                                            UPDATE stu_serv_rec 
+                                            set rsv_stat = ?,
+                                            intend_hsg = ?, campus = ?,
+                                            bldg = ?, room = ?,
+                                            bill_code = ?
+                                            where id = ? and sess = ? and
+                                            yr = ?'''
+
+                                        q_update_stuserv_args = (rsvstat,
+                                                                 intendhsg,
+                                                                 "MAIN", bldg,
+                                                                 room,
+                                                                 billcode,
+                                                                 int(carthid),
+                                                                 sess,
+                                                                 int(year))
+                                        connection = get_connection(EARL)
+                                        # print(q_update_stuserv_rec)
+                                        # print(q_update_stuserv_args)
+                                        """ connection closes when exiting the 
+                                                           'with' block """
+                                        with connection:
+                                            cur = connection.cursor()
+                                            cur.execute(q_update_stuserv_rec,
+                                                        q_update_stuserv_args)
+                                            # cur.close()
+                                        connection.commit()
+                                        # connection.close()
+                                        # continue
+
+                                        # print("Mark room as posted...")
+                                        fn_mark_room_posted(carthid,
+                                                            adir_room,
+                                                            adir_hallcode,
+                                                            term, posted,
+                                                            roomassignmentid,
+                                                            API_server, key)
+
+                                        """Notify Student Billing of 
+                                        changes """
+                                        # print("Notify Student accounts")
+                                        fn_notify(room_output, EARL)
+
+                                    else:
+                                        print("No change needed in "
+                                               "stu_serv_rec")
+
+                                        fn_mark_room_posted(carthid, adir_room,
+                                                            adir_hallcode, term,
+                                                            posted,
+                                                            roomassignmentid,
+                                                            API_server, key)
+
+                                        """Notify Student Billing of 
+                                        changes """
+                                        print("Notify Student accounts 2")
+                                        fn_notify(room_output, EARL)
 
                             else:
-                                # NO STU_SERV_REC -  should not happen
-                                # print("fetch retuned none - No "
-                                #       "stu_serv_rec for student "
-                                #       + carthid + " for term " + term)
-                                body = "Student Service Record does not " \
-                                       "exist for " + carthid + " for term " \
-                                       + term + ".. Please inquire why."
-                                subj = "Adirondack - Stu_serv_rec missing"
-                                print(body)
-                                # sendmail(ADIRONDACK_LIS_SUPPORT,
-                                #          ADIRONDACK_FROM_EMAIL, body, subj)
-
+                                # print("Bill code not found")
+                                fn_write_error(
+                                    "Error in room_assignments.py - "
+                                    "Bill code not found  ID = " + carthid,
+                                    + ", Building = " + str(bldg) +
+                                    ", Room assignment ID = "
+                                    + str(roomassignmentid))
+                            # go ahead and update
                         else:
-                            print("Bill code not found")
-                            # fn_write_error(
-                                # "Error in room_assignments.py - Bill code not"
-                                # "found  ID = " + carthid, + ", Building = "
-                                # + str(bldg) + ", Room assignment ID = "
-                                # + str(roomassignmentid))
-                        # go ahead and update
-                    else:
-                        print("Record not found")
-                        # body = "Student Service Record does not " \
-                        #        "exist for " + carthid + " for term " \
-                        #        + term + ".. Please inquire why."
-                        # subj = "Adirondack - Stu_serv_rec missing"
+                            # print("Record not found")
+                            body = "Error in room_assignments.py - " \
+                                   "Student Service Record does not " \
+                                   "exist for " + carthid + " for term " \
+                                   + term + ".. Please inquire why."
+                            subj = "Adirondack - Stu_serv_rec missing"
+            except Exception as e:
+                # print("Error in file write " + repr(e))
+                fn_write_error("Error in room_assignments.py - file write: "
+                               + repr(e))
 
-        # Remove this after testing - only for testing when no
-        # recent changes are found via the API
-        room_file = settings.ADIRONDACK_TXT_OUTPUT + \
-                    settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
-        if run_mode == 'auto':
-            fn_notify(room_file, EARL)
+        # # Remove this after testing - only for testing when no
+        # # recent changes are found via the API
+        # room_file = settings.ADIRONDACK_TXT_OUTPUT + \
+        #             settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
+        # if run_mode == 'auto':
+        #     fn_notify(room_file, EARL)
 
     except Exception as e:
         # print(
         #         "Error in adirondack_room_assignments_api.py- Main:  " +
-        #         e.message)
+        #         repr(e))
         fn_write_error("Error in room_assignments.py - Main: "
-                       + e.message)
+                       + repr(e))
 
 
 if __name__ == "__main__":

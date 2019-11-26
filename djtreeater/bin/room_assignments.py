@@ -139,12 +139,10 @@ def main():
 
         if run_mode == "manual":
             # print("Manual Mode")
-            session = raw_input("Enter target session (EX. RA 2019):  ")
-            hall = fn_translate_bldg_for_adirondack(
-                raw_input("Enter Hall code - use ALL or specifec bldg: "))
-            if hall == 'ALL':
-                hall = ""
-            posted = raw_input("Do you want unposted or posted records?  "
+            session = input("Enter target session (EX. RA 2019):  ")
+            hall = fn_translate_bldg_for_adirondack(input("Enter Hall code  "
+                                            "- use ALL or specifec bldg: "))
+            posted = input("Do you want unposted or posted records?  "
                                "Enter 0 for unposted, 1 for posted, "
                                "2 for changed, 0,2 for both: ")
             # print(posted)
@@ -207,9 +205,10 @@ def main():
         response = requests.get(url)
         x = json.loads(response.content)
         if not x['DATA']:
-            # print("No new data found")
+            print("No new data found")
             pass
         else:
+            # print(x['DATA'])
             room_file = settings.ADIRONDACK_TXT_OUTPUT + \
                         settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
             room_archive = settings.ADIRONDACK_ROOM_ARCHIVED + \
@@ -355,9 +354,11 @@ def main():
                                 key=settings.INFORMIX_DEBUG
                             ).fetchall()
                         ret = list(data_result)
-                        connection.close()
+                        # connection.close()
 
-                        if ret is not None:
+                        # print(ret)
+                        if len(ret) != 0:
+                            # if ret is not None:
                             # print("Stu Serv Rec Found")
                             if billcode != 0:
                                 """compare rsv_stat, intend_hsg, bldg, room,
@@ -416,7 +417,7 @@ def main():
                                     else:
                                         print("No change needed in "
                                                "stu_serv_rec")
-
+                                        # print("Mark room as posted...")
                                         fn_mark_room_posted(carthid, adir_room,
                                                             adir_hallcode, term,
                                                             posted,
@@ -432,19 +433,21 @@ def main():
                                     + str(roomassignmentid))
                             # go ahead and update
                         else:
-                            # print("Record not found")
                             body = "Error in room_assignments.py - " \
                                    "Student Service Record does not " \
                                    "exist for " + carthid + " for term " \
                                    + term + ".. Please inquire why."
-                            subj = "Adirondack - Stu_serv_rec missing"
+                            # subj = "Adirondack - Stu_serv_rec missing"
+                            fn_write_error(body)
+                            # print(body)
+
 
                 """Notify Student Billing of changes """
                 if run_mode == "auto":
                     if notify_flag:
                         # print("Notify Student accounts")
                         fn_notify(room_file, EARL)
-                room_file.close()
+                room_output.close()
 
             except Exception as e:
                 # print("Error in file write " + repr(e))

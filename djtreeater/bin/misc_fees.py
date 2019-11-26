@@ -30,10 +30,6 @@ from djtreeater.core.utilities import fn_write_error, \
     fn_mark_bill_exported, fn_set_terms, fn_check_cx_records, fn_sendmailfees
 
 from djimix.core.utils import get_connection, xsql
-# from djzbar.utils.informix import do_sql
-# from djzbar.utils.informix import get_engine
-# from djzbar.settings import INFORMIX_EARL_TEST
-# from djzbar.settings import INFORMIX_EARL_PROD
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -68,7 +64,6 @@ parser.add_argument(
 
 # Test with this then remove, use the standard logging mechanism
 # logger = logging.getLogger(__name__)
-
 
 def main():
     # set global variable
@@ -254,7 +249,6 @@ def main():
                 # print("CX Current Term = " + current_term)
 
                 if current_term == adir_term:
-                    # print("Match current term " + current_term)
                     """ here we look for a specific item"""
 
                     """ FORMAT DATE FOR SQL"""
@@ -264,7 +258,6 @@ def main():
                     """Make sure this charge is not already in CX"""
                     x = fn_check_cx_records(tot_code, adir_term, new_date,
                                             stu_id, amount, EARL)
-                    # print('Return = ' + str(x))
                     if x == 0:
                         pass
                         # print("Item is not in CX database")
@@ -280,7 +273,6 @@ def main():
                     else:
                         """Write the ASCII file and log the entry for
                            future reference"""
-                        # print("Write to ASCII csv file")
                         rec = []
                         rec.append(i[1])
 

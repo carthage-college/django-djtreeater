@@ -119,7 +119,8 @@ def fn_translate_bldg_for_adirondack(bldg_code):
         "CMTR": "CMTR",
         "OFF": "OFF",
         "TOWR": "TOWR",
-        "WD": "WD"
+        "WD": "WD",
+        "ALL": ""
     }
     return switcher.get(bldg_code, "Invalid Building")
 
@@ -234,7 +235,7 @@ def fn_convert_date(ddate):
 
 
 def fn_write_misc_header():
-    with codecs.open(settings.ADIRONDACK_ROOM_FEES, 'wb') as fee_output:
+    with codecs.open(settings.ADIRONDACK_ROOM_FEES, 'w') as fee_output:
         csvwriter = csv.writer(fee_output)
         csvwriter.writerow(["ITEM_DATE", "BILL_DESCRIPTION", "ACCOUNT_NUMBER",
                             "AMOUNT", "STUDENT_ID", "TOT_CODE", "BILL_CODE",
@@ -242,7 +243,7 @@ def fn_write_misc_header():
 
 
 def fn_write_billing_header(file_name):
-    with open(file_name, 'wb') as room_output:
+    with open(file_name, 'w') as room_output:
         csvwriter = csv.writer(room_output)
         csvwriter.writerow(["STUDENTNUMBER", "ITEMDATE", "AMOUNT", "TIMEFRAME",
                             "TIMEFRAMENUMERICCODE", "BILLDESCRIPTION",
@@ -254,7 +255,7 @@ def fn_write_billing_header(file_name):
 
 
 def fn_write_assignment_header(file_name):
-    with open(file_name, 'wb') as room_output:
+    with open(file_name, 'w') as room_output:
         csvwriter = csv.writer(room_output)
         csvwriter.writerow(["STUDENTNUMBER", "HALLNAME", "HALLCODE", "FLOOR",
                             "ROOMNUMBER", "BED", "ROOM_TYPE", "OCCUPANCY",
@@ -268,7 +269,7 @@ def fn_write_assignment_header(file_name):
 
 
 def fn_write_application_header():
-    with open(settings.ADIRONDACK_APPLICATONS, 'wb') as output:
+    with open(settings.ADIRONDACK_APPLICATONS, 'w') as output:
         csvwriter = csv.writer(output)
         csvwriter.writerow(["STUDENTNUMBER", "APPLICATIONTYPENAME",
                             "APP_RECEIVED", "APP_COMPLETE",
@@ -425,21 +426,27 @@ def fn_send_mail(to, frum, body, subject):
     --email to addresses may come as list
     """
 
-    msg = MIMEText(body)
-    msg['To'] = to
-    msg['From'] = frum
-    msg['Subject'] = subject
-    msg['Reply-To'] = frum
-
-    print("ready to send")
-    server = smtplib.SMTP('localhost')
-    # show communication with the server
-    # if debug:
-    #     server.set_debuglevel(True)
     try:
+        msg = MIMEText(body)
+        msg['To'] = to
+        msg['From'] = frum
+        msg['Subject'] = subject
+        txt = msg.as_string()
+
+        # print("ready to send")
+        server = smtplib.SMTP('localhost')
+        # show communication with the server
+        # if debug:
+        #     server.set_debuglevel(True)
         # print(msg['To'])
         # print(msg['From'])
-        server.sendmail(frum, to.split(','), msg.as_string())
+        server.sendmail(frum, to.split(','), txt)
+
+    except Exception as e:
+        print(
+                "Error in utilities.py fn_send_mail:  " + repr(e))
+        # fn_write_error(
+        #     "Error in assign_notify.py:" + repr(e))
 
     finally:
         server.quit()

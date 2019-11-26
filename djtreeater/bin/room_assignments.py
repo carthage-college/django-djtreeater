@@ -20,10 +20,6 @@ django.setup()
 
 from django.conf import settings
 from djtools.utils.mail import send_mail
-# from settings import  settings.INFORMIX_ODBC_TRAIN
-# from djzbar.settings import INFORMIX_EARL_SANDBOX
-# from djzbar.settings import INFORMIX_EARL_TEST
-# from djzbar.settings import INFORMIX_EARL_PROD
 from djtreeater.sql.adirondack import Q_GET_TERM
 from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
@@ -122,7 +118,6 @@ def main():
             EARL = None
             # establish database connection
 
-        # print(test)
         if test != "test":
             API_server = "carthage_thd_prod_support"
             key = settings.ADIRONDACK_API_SECRET
@@ -135,7 +130,7 @@ def main():
         # print(EARL)
 
         utcts = fn_get_utcts()
-        # print("Seconds from UTC Zero hour = " + str(utcts))
+        """Seconds from UTC Zero hour"""
         hashstring = str(utcts) + key
 
         """Assumes the default UTF-8"""
@@ -167,9 +162,8 @@ def main():
             ret = list(data_result)
 
             if ret is None:
-                print("Term not found")
-                # fn_write_error(
-                #     "Error in room_assignments.py - Main: No term found ")
+                fn_write_error(
+                    "Error in room_assignments.py - Main: No term found ")
                 quit()
             else:
                 for row in ret:
@@ -228,9 +222,7 @@ def main():
             room_data = fn_encode_rows_to_utf8(x['DATA'])
             # Write header
             try:
-                # print("Writing Header")
                 fn_write_assignment_header(room_file)
-                # print("Opening file to write")
                 with open(room_file, 'a') as room_output:
                     for i in room_data:
                         carthid = i[0]
@@ -335,9 +327,7 @@ def main():
                                             canceldate, cancelnote,
                                             cancelreason, ghost, posted,
                                             roomassignmentid, billcode])
-                          # print(str(carthid) + ', ' + str(billcode) + ', '
-                        #       + str(bldg) + ', ' + str(room) + ', ' +
-                        #       + str(room_type))
+
                         '''
                         Validate if the stu_serv_rec exists first
                         update stu_serv_rec id, sess, yr, rxv_stat,
@@ -355,7 +345,7 @@ def main():
                                       and sess  = "{1}"
                                       and id = {0}'''.format(carthid,
                                                              sess, year)
-                        # print(q_validate_stuserv_rec)
+
                         connection = get_connection(EARL)
                         """ connection closes when exiting the 'with' block """
                         with connection:
@@ -365,30 +355,21 @@ def main():
                             ).fetchall()
                         ret = list(data_result)
                         connection.close()
-                        print(ret)
-
 
                         if ret is not None:
-                            print("Stu Serv Rec Found")
+                            # print("Stu Serv Rec Found")
                             if billcode != 0:
                                 """compare rsv_stat, intend_hsg, bldg, room,
                                 billcode -- Update only if something has 
                                 changed"""
-                                print("Record found " + carthid)
+                                # print("Record found " + carthid)
 
                                 for row in ret:
-                                    print("Read rows")
-                                    print(row)
                                     if row[3] != rsvstat \
                                             or row[4] != intendhsg \
                                             or row[6] != bldg \
                                             or row[7] != room \
                                             or row[10] != billcode:
-                                        print(rsvstat)
-                                        print(intendhsg)
-                                        print(bldg)
-                                        print(room)
-                                        print(billcode)
 
                                         # print("Need to update stu_serv_rec")
                                         q_update_stuserv_rec = '''
@@ -417,7 +398,6 @@ def main():
                                             cur = connection.cursor()
                                             cur.execute(q_update_stuserv_rec,
                                                         q_update_stuserv_args)
-                                            # cur.close()
                                         connection.commit()
                                         # connection.close()
                                         # continue

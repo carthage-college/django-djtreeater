@@ -222,6 +222,7 @@ def main():
             room_data = fn_encode_rows_to_utf8(x['DATA'])
             # Write header
             try:
+                notify_flag = False
                 fn_write_assignment_header(room_file)
                 with open(room_file, 'a') as room_output:
                     for i in room_data:
@@ -401,6 +402,9 @@ def main():
                                         connection.commit()
                                         # connection.close()
                                         # continue
+                                        """If anything is written to database
+                                            set this flag to True"""
+                                        notify_flag = True
 
                                         # print("Mark room as posted...")
                                         fn_mark_room_posted(carthid,
@@ -409,12 +413,6 @@ def main():
                                                             term, posted,
                                                             roomassignmentid,
                                                             API_server, key)
-
-                                        """Notify Student Billing of 
-                                        changes """
-                                        # print("Notify Student accounts")
-                                        fn_notify(room_output, EARL)
-
                                     else:
                                         print("No change needed in "
                                                "stu_serv_rec")
@@ -424,12 +422,6 @@ def main():
                                                             posted,
                                                             roomassignmentid,
                                                             API_server, key)
-
-                                        """Notify Student Billing of 
-                                        changes """
-                                        print("Notify Student accounts 2")
-                                        fn_notify(room_output, EARL)
-
                             else:
                                 # print("Bill code not found")
                                 fn_write_error(
@@ -446,6 +438,14 @@ def main():
                                    "exist for " + carthid + " for term " \
                                    + term + ".. Please inquire why."
                             subj = "Adirondack - Stu_serv_rec missing"
+
+                """Notify Student Billing of changes """
+                if run_mode == "auto":
+                    if notify_flag:
+                        # print("Notify Student accounts")
+                        fn_notify(room_file, EARL)
+                room_file.close()
+
             except Exception as e:
                 # print("Error in file write " + repr(e))
                 fn_write_error("Error in room_assignments.py - file write: "

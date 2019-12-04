@@ -101,7 +101,6 @@ def fn_notify(file, EARL):
 
             """Skip the header line - because of sort, it may not be 
             the first line in the record"""
-            # if not unicode(line[0]).isnumeric() and lastid == 0:
             if not line[0].isnumeric():
                 # print("Skip header")
                 # if line[0] == "STUDENTNUMBER":

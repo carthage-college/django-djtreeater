@@ -415,8 +415,8 @@ def main():
                                                             roomassignmentid,
                                                             API_server, key)
                                     else:
-                                        print("No change needed in "
-                                               "stu_serv_rec")
+                                        # print("No change needed in "
+                                        #        "stu_serv_rec")
                                         # print("Mark room as posted...")
                                         fn_mark_room_posted(carthid, adir_room,
                                                             adir_hallcode, term,

@@ -98,7 +98,6 @@ def fn_notify(file, EARL):
         fullname = ""
 
         for line in sorted(r, key=itemgetter(0, 10)):
-
             """Skip the header line - because of sort, it may not be 
             the first line in the record"""
             if not line[0].isnumeric():
@@ -108,7 +107,6 @@ def fn_notify(file, EARL):
 
             else:
                 post = line[21]
-                # print("last id = " + str(lastid))
                 """Revision 11/21/19 - records can come as a change, which
                   pulls two records from the API, or an add, which pulls
                   only one.   An add needs to be accounted for as a code
@@ -123,7 +121,7 @@ def fn_notify(file, EARL):
                 elif post == "0":
                     if line[0] == lastid:
                         """this is the second record of a change"""
-                        if lastcode == line[23]:
+                        if lastcode != line[23]:
                             code_list.append("Student " + line[0]
                                     + ", " + fullname + " moved to "
                                     + line[2] + " " + line[4] + " " + line[23]
@@ -138,6 +136,7 @@ def fn_notify(file, EARL):
                                     + line[6] + " from " + lastbldg + " "
                                     + lastroom + " " + lastcode + ", "
                                     + lastroomtype + " on " + line[10])
+                            # print(xtra_list)
 
                 elif line[0] != lastid:
                     """The first assignment   """
@@ -156,10 +155,12 @@ def fn_notify(file, EARL):
                 lastcode = line[23]
                 lastbldg = line[2]
                 lastroom = line[4]
+                # print(code_list)
 
         """PREPARE THE EMAIL"""
+        # print(code_list)
         if len(code_list) == 0:
-            # print("No changes in file")
+            print("No changes in file")
             quit()
         else:
             body = "\n" + "Room changes requiring bill code change:" + "\n"
@@ -199,4 +200,4 @@ def fn_notify(file, EARL):
 # if __name__ == "__main__":
 #
 #     sys.exit(main())
-
+#

@@ -145,7 +145,7 @@ def main():
             posted = input("Do you want unposted or posted records?  "
                                "Enter 0 for unposted, 1 for posted, "
                                "2 for changed, 0,2 for both: ")
-            # print(posted)
+            # print(hall)
 
         elif run_mode == "auto":
 

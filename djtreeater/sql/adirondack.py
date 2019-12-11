@@ -179,22 +179,25 @@ FROM
 
     INNER JOIN    id_rec        IR    ON    PER.id            =    IR.id
 
-    LEFT JOIN (
-        SELECT a1.id, a1.aa, a1.line1 eml1, a1.beg_date, a1.end_date,
-                a2.id, a2.aa, a2.eml2, a2.beg_date, a2.end_date
-        FROM aa_rec a1
-        LEFT JOIN
-             (SELECT id, aa, line1 eml2, beg_date, end_date
-            FROM aa_rec) a2
-            on a2.id = a1.id
-            where (a1.aa = 'EML1'
-            AND    a1.beg_date < TODAY
-            AND NVL(a1.end_date, TODAY) >= TODAY)
-            and (a2.aa= 'EML2'
-            AND    a2.beg_date < TODAY
-            AND NVL(a2.end_date, TODAY) >= TODAY)
-            ) EML ON EML.id = PER.id
-
+    LEFT JOIN 
+        (  SELECT a1.id id1, a1.line1 eml1, a2.id id2, a2.eml2
+            FROM aa_rec a1
+            LEFT JOIN
+               (
+                SELECT id, aa, line1 eml2, beg_date, end_date 
+                FROM aa_rec 
+                WHERE aa = 'EML2'            
+                AND  beg_date < TODAY
+                AND NVL(end_date, TODAY) >= TODAY     
+              ) a2 
+            ON a2.id = a1.id 
+            WHERE 
+            (
+                a1.aa = 'EML1'
+                AND    a1.beg_date < TODAY
+                AND NVL(a1.end_date, TODAY) >= TODAY
+            )
+        ) EML on EML.id1 = PER.id 
 
     LEFT JOIN
         (SELECT id, line1, line2, line3, city, st, zip, ctry, phone
@@ -292,30 +295,22 @@ FROM
 
 '''
 
-Q_GET_TERM = '''select distinct
+Q_GET_TERM = '''select distinct 
                   trim(trim(sess)||' '||trim(TO_CHAR(yr))) session
                   from acad_cal_rec
                   where sess in ('RA','RC')
                   and subsess = ''
                   and prog = 'UNDG'
-                  and trim(sess)||TO_CHAR(yr) =
+                  and trim(sess)||TO_CHAR(yr) = 
                   CASE
-                      -- ACYR 1920 After April 20 until nov 20
+                      -- ACYR 1920 After April 20 
                       WHEN TODAY >= '04/20/'||YEAR(TODAY)
-                          AND TODAY < '11/20/'||YEAR(TODAY)
-                          AND LEFT(ACYR,2) = RIGHT(TO_CHAR(YEAR(TODAY)),2)
+                          AND TODAY <= '12/31/'||YEAR(TODAY)
                           THEN
                               'RA'||YEAR(TODAY)
-                      --ACYR 2021 after nov 20
-                      WHEN TODAY >= '11/20/'||YEAR(TODAY)
-                          AND TODAY < '/04/20/'||YEAR(TODAY)+1
-                          AND LEFT(ACYR,2) = RIGHT(TO_CHAR(YEAR(TODAY+1)),2)
-                          THEN
-                              'RC'||YEAR(TODAY + 1)
                       --ACYR 2021 after Jan 1 until April 20
                       WHEN TODAY >= '01/01/'||YEAR(TODAY)
                           AND TODAY < '04/20/'||YEAR(TODAY)
-                          AND LEFT(ACYR,2) = RIGHT(TO_CHAR(YEAR(TODAY)),2)
                           THEN
                               'RC'||YEAR(TODAY)
                       END

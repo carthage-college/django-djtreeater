@@ -1,4 +1,13 @@
+# -*- coding: utf-8 -*-
+
 import os
+# django settings for shell environment
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
+# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
+import django
+django.setup()
+from django.conf import settings
+
 import calendar
 import time
 import datetime
@@ -7,35 +16,27 @@ import json
 import requests
 import csv
 
-# django settings for shell environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
-import django
-django.setup()
-
-from django.conf import settings
-from utilities import fn_write_error, fn_write_application_header, \
-    fn_get_utcts
-
+from djtreeater.core.utilities import fn_write_error, \
+    fn_write_application_header, fn_get_utcts, fn_encode_rows_to_utf8
 
 # set up command-line options
 desc = """
     Collect adirondack data from applications for housing
 """
 
-
-def encode_rows_to_utf8(rows):
-    encoded_rows = []
-    for row in rows:
-        try:
-            encoded_row = []
-            for value in row:
-                if isinstance(value, basestring):
-                    value = value.decode('cp1252').encode("utf-8")
-                encoded_row.append(value)
-            encoded_rows.append(encoded_row)
-        except Exception as e:
-            fn_write_error("Error in encoded_rows routine " + e.message)
-    return encoded_rows
+# def encode_rows_to_utf8(rows):
+#     encoded_rows = []
+#     for row in rows:
+#         try:
+#             encoded_row = []
+#             for value in row:
+#                 if isinstance(value, basestring):
+#                     value = value.decode('cp1252').encode("utf-8")
+#                 encoded_row.append(value)
+#             encoded_rows.append(encoded_row)
+#         except Exception as e:
+#             fn_write_error("Error in encoded_rows routine " + e.message)
+#     return encoded_rows
 
 
 def main():
@@ -55,9 +56,9 @@ def main():
         # Will need to build URL dynamically based on input from user
         # Allow query by student ID
         # Include term as variable
-        searchval_id = raw_input("Enter Carthage ID:   ")
+        searchval_id = input("Enter Carthage ID:   ")
         print(searchval_id)
-        searchval_term = raw_input("Enter Term: (Example RA 2019):  " )
+        searchval_term = input("Enter Term: (Example RA 2019):  " )
         print(searchval_term)
 
         url = "https://carthage.datacenter.adirondacksolutions.com/" \
@@ -68,6 +69,7 @@ def main():
             "h=" + hash_object.hexdigest() + "&" \
             "TimeFrameNumericCode=" + searchval_term + "&" \
             "studentNumber=" + searchval_id
+        # possible additional params
         # + "&"
         # "ApplicationTypeName= "
         # + "&"
@@ -91,7 +93,7 @@ def main():
             fn_write_application_header()
 
             print("Start Loop")
-            with open(settings.ADIRONDACK_APPLICATONS, 'ab') as output:
+            with open(settings.ADIRONDACK_APPLICATONS, 'a') as output:
                 for i in x['DATA']:
                     print(i)
                     csvWriter = csv.writer(output,
@@ -100,7 +102,7 @@ def main():
 
 
     except Exception as e:
-        print("Error in adirondack_applicationss_api.py- Main:  " + e.message)
+        print("Error in adirondack_applicationss_api.py- Main:  " + repr(e))
         # fn_write_error("Error in adirondack_std_billing_api.py - Main: "
         #                + e.message)
 

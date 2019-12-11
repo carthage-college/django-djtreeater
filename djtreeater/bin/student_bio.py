@@ -145,7 +145,7 @@ def main():
             file_out.close()
 
             # send file to SFTP Site..
-            #sftp_upload(adirondackdata)
+            sftp_upload(adirondackdata)
 
         if test:
             SUBJECT = "[Adirondack] Student Bio data success"

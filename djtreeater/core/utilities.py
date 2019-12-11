@@ -3,10 +3,12 @@ import csv
 import datetime
 import json
 import calendar
-from datetime import date
+import time
+import datetime as dt
+# from datetime import datetime
+# from datetime import date
 import requests
 import codecs
-import time
 import hashlib
 from time import strftime, strptime
 import smtplib
@@ -22,6 +24,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
+
+from djimix.core.utils import get_connection, xsql
 
 # set up command-line options
 desc = """
@@ -115,7 +119,8 @@ def fn_translate_bldg_for_adirondack(bldg_code):
         "CMTR": "CMTR",
         "OFF": "OFF",
         "TOWR": "TOWR",
-        "WD": "WD"
+        "WD": "WD",
+        "ALL": ""
     }
     return switcher.get(bldg_code, "Invalid Building")
 
@@ -159,10 +164,12 @@ def fn_mark_room_posted(stu_id, room_no, hall_code, term, posted,
             # print("Record marked as posted")
             pass
 
-        # Because we are not using Adirondack for regular room rental fees
-        # we have no need of those billing records being active
-        # Any bills related to this assignment can be marked as posted
-        # Miscellaneous charges have an assignment ID of 0,
+        """
+           Because we are not using Adirondack for regular room rental fees
+           we have no need of those billing records being active
+           Any bills related to this assignment can be marked as posted
+           Miscellaneous charges have an assignment ID of 0,
+           """
 
         url = "https://carthage.datacenter.adirondacksolutions.com/" \
               + api_server + "/apis/thd_api.cfc?" \
@@ -184,10 +191,7 @@ def fn_mark_room_posted(stu_id, room_no, hall_code, term, posted,
                        + e.message)
 
 
-
-
 def fn_mark_bill_exported(bill_id, api_server, api_key):
-
     try:
         utcts = fn_get_utcts()
         hashstring = str(utcts) + api_key
@@ -202,8 +206,8 @@ def fn_mark_bill_exported(bill_id, api_server, api_key):
             "STUDENTBILLINGINTERNALID=" + bill_id + "&" \
             "Exported=0" + "&" \
             "EXPORTCHARGES=-1"
-        # API Does not accept student ID as param if bill internal ID is used
-        # print("URL = " + url)
+        """ API Does not accept student ID as param if bill internal ID 
+        is used """
 
         response = requests.get(url)
         x = json.loads(response.content)
@@ -231,7 +235,7 @@ def fn_convert_date(ddate):
 
 
 def fn_write_misc_header():
-    with codecs.open(settings.ADIRONDACK_ROOM_FEES, 'wb') as fee_output:
+    with codecs.open(settings.ADIRONDACK_ROOM_FEES, 'w') as fee_output:
         csvwriter = csv.writer(fee_output)
         csvwriter.writerow(["ITEM_DATE", "BILL_DESCRIPTION", "ACCOUNT_NUMBER",
                             "AMOUNT", "STUDENT_ID", "TOT_CODE", "BILL_CODE",
@@ -239,7 +243,7 @@ def fn_write_misc_header():
 
 
 def fn_write_billing_header(file_name):
-    with open(file_name, 'wb') as room_output:
+    with open(file_name, 'w') as room_output:
         csvwriter = csv.writer(room_output)
         csvwriter.writerow(["STUDENTNUMBER", "ITEMDATE", "AMOUNT", "TIMEFRAME",
                             "TIMEFRAMENUMERICCODE", "BILLDESCRIPTION",
@@ -251,7 +255,7 @@ def fn_write_billing_header(file_name):
 
 
 def fn_write_assignment_header(file_name):
-    with open(file_name, 'wb') as room_output:
+    with open(file_name, 'w') as room_output:
         csvwriter = csv.writer(room_output)
         csvwriter.writerow(["STUDENTNUMBER", "HALLNAME", "HALLCODE", "FLOOR",
                             "ROOMNUMBER", "BED", "ROOM_TYPE", "OCCUPANCY",
@@ -261,11 +265,11 @@ def fn_write_assignment_header(file_name):
                             "CHECKEDOUTDATE", "PO_BOX", "PO_BOX_COMBO",
                             "CANCELED", "CANCELDATE",
                             "CANCELNOTE", "CANCELREASON", "GHOST", "POSTED",
-                            "ROOMASSIGNMENTID"])
+                            "ROOMASSIGNMENTID", "CODE"])
 
 
 def fn_write_application_header():
-    with open(settings.ADIRONDACK_APPLICATONS, 'wb') as output:
+    with open(settings.ADIRONDACK_APPLICATONS, 'w') as output:
         csvwriter = csv.writer(output)
         csvwriter.writerow(["STUDENTNUMBER", "APPLICATIONTYPENAME",
                             "APP_RECEIVED", "APP_COMPLETE",
@@ -415,16 +419,52 @@ def fn_sendmailfees(to, frum, body, subject):
         # server.quit()
         pass
 
+
+def fn_send_mail(to, frum, body, subject):
+    """
+    Stock sendmail in core does not have reply to or split of to emails
+    --email to addresses may come as list
+    """
+
+    try:
+        msg = MIMEText(body)
+        msg['To'] = to
+        msg['From'] = frum
+        msg['Subject'] = subject
+        txt = msg.as_string()
+
+        # print("ready to send")
+        server = smtplib.SMTP('localhost')
+        # show communication with the server
+        # if debug:
+        #     server.set_debuglevel(True)
+        # print(msg['To'])
+        # print(msg['From'])
+        server.sendmail(frum, to.split(','), txt)
+
+    except Exception as e:
+        print(
+                "Error in utilities.py fn_send_mail:  " + repr(e))
+        # fn_write_error(
+        #     "Error in assign_notify.py:" + repr(e))
+
+    finally:
+        server.quit()
+        # print("Done")
+        pass
+
+
 def fn_get_utcts():
-    # GMT Zero hour is 1/1/70
-    # Zero hour in seconds = 0
-    # Current date and time
+    """GMT Zero hour is 1/1/70
+    Zero hour in seconds = 0
+
+    Current date and time"""
     a = datetime.datetime.now()
-    # Format properly
+    """Format properly"""
     b = a.strftime('%a %b %d %H:%M:%S %Y')
-    # convert to a struct time
+    """convert to a struct time"""
     c = time.strptime(b)
-    # Calculate seconds from GMT zero hour
+    """Calculate seconds from GMT zero hour"""
     utcts = calendar.timegm(c)
     # print("Seconds from UTC Zero hour = " + str(utcts))
     return utcts
@@ -433,3 +473,77 @@ def fn_get_utcts():
 def fn_clear_logger():
     logging.shutdown()
     return "Clear Logger"
+
+def fn_check_cx_records(totcod, prd, jndate, stuid, amt, EARL):
+    try:
+        billqry = '''select  SA.id, IR.fullname, ST.subs_no, 
+            SE.jrnl_date, ST.prd, ST.subs, STR.bal_code, ST.tot_code, SE.descr, 
+            SE.ctgry, STR.amt, ST.amt_inv_act, SA.stat 
+            from subtr_rec STR
+            left join subt_rec ST on STR.subs = ST.subs
+            and STR.subs_no = ST.subs_no 
+            and STR.tot_code = ST.tot_code
+            and STR.tot_prd = ST.prd
+            left join sube_rec SE on SE.subs = STR.subs
+            and SE.subs_no = STR.subs_no
+            and SE.sube_no = STR.ent_no
+            left join suba_rec SA on SA.subs = SE.subs
+            and SA.suba_no = SE.subs_no
+            left join id_rec IR on IR.id = SA.id
+            where STR.subs = 'S/A'
+            and STR.tot_code = "{0}"  
+            and STR.tot_prd = "{1}"  
+            and jrnl_date = "{2}"
+            and IR.id = {3}
+            and STR.amt = {4}
+            '''.format(totcod, prd, jndate, stuid, amt)
+        # print(jndate)
+
+        # print(billqry)
+        # ret = do_sql(billqry, earl=EARL)
+        # print(ret)
+
+        # Get the current term
+        # print(EARL)
+        connection = get_connection(EARL)
+        # connection closes when exiting the 'with' block
+        # print("Connection established")
+        with connection:
+            data_result = xsql(
+                billqry, connection,
+                key=settings.INFORMIX_DEBUG
+            ).fetchall()
+        # print("Data returned")
+
+        ret = list(data_result)
+        # print(ret)
+
+        # if ret is None:
+        # if ret == []:
+        if not ret:
+                return 0
+        else:
+            return 1
+    except Exception as e:
+        print("Error in misc_fees.py - fn_check_cx_records:  " + str(e))
+        # fn_write_error("Error in misc_fees.py - Main: "
+        #                + e.message)
+        return 0
+
+
+def fn_set_terms():
+    # Only RA and RC matter.
+    # print(datetime.today().month)
+    # print(str(datetime.today()))
+    # If we are in spring RC term, last term will be RA with Year - 1
+    # EX:  RC2020 current RA2019 last
+    if dt.date.today().month < 7:
+        current_term = 'RC' + str(dt.date.today().year)
+        last_term = 'RA' + str(dt.date.today().year - 1)
+    # If we are in summer or fall both RA and RC will be current year
+    # EX:  RA2019 current RC2019 last
+    else:
+        current_term = 'RA' + str(dt.date.today().year)
+        last_term = 'RC' + str(dt.date.today().year)
+    return [last_term, current_term]
+

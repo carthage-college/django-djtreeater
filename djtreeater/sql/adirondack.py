@@ -196,7 +196,7 @@ FROM
          SELECT unique PV.id, PV.program, '' subprog, '' major, 
             	ADM.pref_name,
             	PV.student, ADM.plan_enr_sess sess, ADM.plan_enr_yr yr,
-	            '' acst, 'FF' cl, '' major1,  
+	            '' acst, ADM.cl, '' major1,  
     	        NULL::SMALLINT plan_grad_yr, '' adm_sess, 
 				NULL::SMALLINT adm_yr, 1 row_num
          FROM provisioning_vw PV

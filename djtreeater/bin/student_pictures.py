@@ -143,7 +143,7 @@ def main():
         global EARL
         # determines which database is being called from the command line
         if database == 'cars':
-            EARL = INFORMIX_EARL_PROD
+            EARL = INFORMIX_EARL
         if database == 'train':
             EARL = INFORMIX_EARL_TEST
         else:

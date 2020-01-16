@@ -106,7 +106,7 @@ def main():
         global EARL
         # determines which database is being called from the command line
         if database == 'cars':
-            EARL = settings.INFORMIX_ODBC_TRAIN
+            EARL = settings.INFORMIX_ODBC
         if database == 'train':
             EARL = settings.INFORMIX_ODBC_TRAIN
         elif database == 'sandbox':

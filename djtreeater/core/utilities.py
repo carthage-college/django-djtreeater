@@ -233,7 +233,6 @@ def fn_convert_date(ddate):
         retdate = ''
     return retdate
 
-
 def fn_write_misc_header():
     with codecs.open(settings.ADIRONDACK_ROOM_FEES, 'w') as fee_output:
         csvwriter = csv.writer(fee_output)

@@ -24,8 +24,7 @@ from djtreeater.sql.adirondack import Q_GET_TERM
 from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
-    fn_mark_room_posted, fn_translate_bldg_for_adirondack, fn_send_mail, \
-    fn_informix_date
+    fn_mark_room_posted, fn_translate_bldg_for_adirondack, fn_send_mail
 from djtreeater.core.adiron_asgn_ntfy import fn_notify
 from djimix.core.utils import get_connection, xsql
 
@@ -234,10 +233,7 @@ def main():
                         """Note: Checkout date is returning in the checkout
                           field from the API rather than checkoutdate field"""
                         checkin = i[10]
-
-                        # checkedindate = fn_informix_date(i[10])
                         checkedindate = i[10]
-
                         checkout = i[12]
                         checkedoutdate = i[13]
                         po_box = i[14]

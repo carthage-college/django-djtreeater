@@ -24,7 +24,8 @@ from djtreeater.sql.adirondack import Q_GET_TERM
 from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
-    fn_mark_room_posted, fn_translate_bldg_for_adirondack, fn_send_mail
+    fn_mark_room_posted, fn_translate_bldg_for_adirondack, fn_send_mail, \
+    fn_informix_date
 from djtreeater.core.adiron_asgn_ntfy import fn_notify
 from djimix.core.utils import get_connection, xsql
 
@@ -109,8 +110,6 @@ def main():
             EARL = settings.INFORMIX_ODBC
         if database == 'train':
             EARL = settings.INFORMIX_ODBC_TRAIN
-        elif database == 'sandbox':
-            EARL = settings.INFORMIX_ODBC_TRAIN
         else:
             # # this will raise an error when we call get_engine()
             # below but the argument parser should have taken
@@ -179,9 +178,8 @@ def main():
                   "h=" + hash_object.hexdigest() + "&" \
                   "TimeFrameNumericCode=" + session + "&" \
                   "Posted=" + posted + "&" \
-                  "HALLCODE=" + hall
-                  #   + "&" \
-                  # "STUDENTNUMBER=" + "1537167"
+                  "HALLCODE=" + hall + "&" \
+                  "STUDENTNUMBER=" + "1294590"
         # "CurrentFuture=-1" + "&" \
         #                      "Ghost=0" + "&" \
         # NOTE:  HALLCODE can be empty
@@ -201,7 +199,6 @@ def main():
         a bill code'''
 
         # print("URL = " + url)
-
         response = requests.get(url)
         x = json.loads(response.content)
         if not x['DATA']:
@@ -237,16 +234,10 @@ def main():
                         """Note: Checkout date is returning in the checkout
                           field from the API rather than checkoutdate field"""
                         checkin = i[10]
-                        checkedindate = i[11]
-                        # if i[11] == None:
-                        #     checkedindate = None
-                        # else:
-                        #     d1 = datetime.strptime(i[11],
-                        #                            "%B, "
-                        #                            "%d %Y "
-                        #                            "%H:%M:%S")
-                        #     checkedindate = d1.strftime("%m-%d-%Y")
-                        # print("ADD DATE = " + str(checkin))
+
+                        # checkedindate = fn_informix_date(i[10])
+                        checkedindate = i[10]
+
                         checkout = i[12]
                         checkedoutdate = i[13]
                         po_box = i[14]
@@ -433,14 +424,35 @@ def main():
                                     + str(roomassignmentid))
                             # go ahead and update
                         else:
-                            body = "Error in room_assignments.py - " \
-                                   "Student Service Record does not " \
-                                   "exist for " + carthid + " for term " \
-                                   + term + ".. Please inquire why."
-                            # subj = "Adirondack - Stu_serv_rec missing"
-                            fn_write_error(body)
-                            # print(body)
+                            """As of 1/30/20, we have decided that it
+                                makes sense to insert a skeleton
+                                stu_serv_rec here
+                                May need to deal with pulling from fall
+                                record for spring term, and deal with parking
+                                logic
+                                """
+                            q_create_stu_serv_rec = '''INSERT INTO stu_serv_rec
+                                    (id, sess, yr, rsv_stat, intend_hsg, 
+                                    campus, bldg,  room, add_date, bill_code)
+                                VALUES
+                                    ({0},'{1}', {2}, '{3}', '{4}', '{5}', 
+                                    '{6}', '{7}', '{8}','{9}')
+                            '''.format(carthid, sess, year, 'R', 'R', 'MAIN',
+                                       bldg, room, checkedindate,  billcode)
+                            # print(q_create_stu_serv_rec)
 
+                            connection = get_connection(EARL)
+                            with connection:
+                                cur = connection.cursor()
+                                cur.execute(q_create_stu_serv_rec)
+                            connection.commit()
+
+                            fn_mark_room_posted(carthid,
+                                                room,
+                                                bldg,
+                                                term, posted,
+                                                roomassignmentid,
+                                                API_server, key)
 
                 """Notify Student Billing of changes """
                 if run_mode == "auto":

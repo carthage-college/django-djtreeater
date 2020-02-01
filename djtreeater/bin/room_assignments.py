@@ -160,6 +160,10 @@ def main():
             if ret is None:
                 fn_write_error(
                     "Error in room_assignments.py - Main: No term found ")
+                fn_send_mail(settings.ADIRONDACK_TO_EMAIL,
+                             settings.ADIRONDACK_FROM_EMAIL,
+                             "Error in room_assignments.py - Main: No term "
+                             "found ", "Adirondack Error")
                 quit()
             else:
                 for row in ret:
@@ -177,8 +181,10 @@ def main():
                   "h=" + hash_object.hexdigest() + "&" \
                   "TimeFrameNumericCode=" + session + "&" \
                   "Posted=" + posted + "&" \
-                  "HALLCODE=" + hall + "&" \
-                  "STUDENTNUMBER=" + "1294590"
+                  "HALLCODE=" + hall
+
+        # + "&" \
+        #     "STUDENTNUMBER=" + "1495787"
         # "CurrentFuture=-1" + "&" \
         #                      "Ghost=0" + "&" \
         # NOTE:  HALLCODE can be empty
@@ -201,7 +207,7 @@ def main():
         response = requests.get(url)
         x = json.loads(response.content)
         if not x['DATA']:
-            print("No new data found")
+            # print("No new data found")
             pass
         else:
             # print(x['DATA'])
@@ -418,6 +424,14 @@ def main():
                                     + ", Building = " + str(bldg) +
                                     ", Room assignment ID = "
                                     + str(roomassignmentid))
+                                fn_send_mail(settings.ADIRONDACK_TO_EMAIL,
+                                             settings.ADIRONDACK_FROM_EMAIL,
+                                     "Error in room_assignments.py - "
+                                     "Bill code not found  ID = " + carthid,
+                                     + ", Building = " + str(bldg) +
+                                     ", Room assignment ID = "
+                                     + str(roomassignmentid),
+                                     "Adirondack Error")
                             # go ahead and update
                         else:
                             """As of 1/30/20, we have decided that it
@@ -461,6 +475,10 @@ def main():
                 # print("Error in file write " + repr(e))
                 fn_write_error("Error in room_assignments.py - file write: "
                                + repr(e))
+                fn_send_mail(settings.ADIRONDACK_TO_EMAIL,
+                             settings.ADIRONDACK_FROM_EMAIL,
+                             "Error in room_assignments.py - file write: "
+                             + repr(e), "Adirondack Error")
 
         # # Remove this after testing - only for testing when no
         # # recent changes are found via the API

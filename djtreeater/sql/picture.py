@@ -1,4 +1,4 @@
-from sqlalchemy import text
+# from sqlalchemy import text
 
 PICTURE_ID_QUERY = '''
 SELECT Distinct 
@@ -20,10 +20,9 @@ FROM
     INNER JOIN id_rec IR ON PER.id = IR.id
     INNER JOIN cl_table CL ON PER.cl = CL.cl
     INNER JOIN profile_rec PRO ON PER.id = PRO.id
-    
 where PRO.priv_code != 'FERP'
---limit 10
 '''
+# LIMIT 10
 
 LENEL_PICTURE_QUERY = """
     SELECT

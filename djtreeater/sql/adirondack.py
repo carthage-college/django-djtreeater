@@ -322,13 +322,13 @@ Q_GET_TERM = '''select distinct
                   and trim(sess)||TO_CHAR(yr) = 
                   CASE
                       -- ACYR 1920 After April 20 
-                      WHEN TODAY >= '04/20/'||YEAR(TODAY)
+                      WHEN TODAY >= '05/20/'||YEAR(TODAY)
                           AND TODAY <= '12/31/'||YEAR(TODAY)
                           THEN
                               'RA'||YEAR(TODAY)
                       --ACYR 2021 after Jan 1 until April 20
                       WHEN TODAY >= '01/01/'||YEAR(TODAY)
-                          AND TODAY < '04/20/'||YEAR(TODAY)
+                          AND TODAY < '05/20/'||YEAR(TODAY)
                           THEN
                               'RC'||YEAR(TODAY)
                       END

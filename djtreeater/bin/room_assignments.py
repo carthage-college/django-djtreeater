@@ -156,6 +156,8 @@ def main():
                     key=settings.INFORMIX_DEBUG
                 ).fetchall()
             ret = list(data_result)
+            # print(Q_GET_TERM)
+            # print(ret)
 
             if ret is None:
                 fn_write_error(
@@ -181,10 +183,9 @@ def main():
                   "h=" + hash_object.hexdigest() + "&" \
                   "TimeFrameNumericCode=" + session + "&" \
                   "Posted=" + posted + "&" \
-                  "HALLCODE=" + hall
-
-        # + "&" \
-        #     "STUDENTNUMBER=" + "1495787"
+                  "HALLCODE=" + hall\
+                  # + "&" \
+                  # "STUDENTNUMBER=" + "1452317"
         # "CurrentFuture=-1" + "&" \
         #                      "Ghost=0" + "&" \
         # NOTE:  HALLCODE can be empty

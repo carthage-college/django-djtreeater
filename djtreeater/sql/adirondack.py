@@ -321,7 +321,7 @@ Q_GET_TERM = '''select distinct
                   and prog = 'UNDG'
                   and trim(sess)||TO_CHAR(yr) = 
                   CASE
-                      -- ACYR 1920 After April 20 
+                      -- ACYR 1920 After May 20 
                       WHEN TODAY >= '05/20/'||YEAR(TODAY)
                           AND TODAY <= '12/31/'||YEAR(TODAY)
                           THEN

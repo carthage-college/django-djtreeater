@@ -125,7 +125,7 @@ def main():
     else:
         cur_ssr_sql = get_spring_to_fall(target_sess, target_yr)
 
-    # print(cur_ssr_sql)
+    print(cur_ssr_sql)
 
     connection = get_connection(EARL)
     """ connection closes when exiting the 'with' block """
@@ -146,12 +146,14 @@ def main():
             # stu_cl = row[9]
             # earn_hrs = row[6]
 
-            """Fall term is always a clean insert"""
+            """Fall term is always a clean insert - no parking info, those 
+                will come later via ???"""
             if target_sess == 'RA':
                 print("clean insert - no need to use last term")
-                x = insert_ssr(carth_id, target_sess, target_yr, "UN", "000",
-                               "", "R", "R")
-                print(x)
+                insSql = insert_ssr(carth_id, target_sess, target_yr, "UN", "000",
+                               "", "O", "R", EARL)
+                print(insSql)
+
             else:
                 print("search previous term stu_serv_rec")
                 """This query will find the prior stu_serv_rec if it exists"""
@@ -177,16 +179,18 @@ def main():
                             rsvstat = r[10]
                             # mealplan = r[7]
                             # parkloc = r[8]
+                        """Here I need something to decipher the existing 
+                            entry.for parking"""
                         # print ("Insert " + str(carth_id), target_sess,
                         #        str(target_yr), bldg, room, billcode,
                         #        intdhsg, rsvstat)
                         # x = insert_ssr(carth_id, target_sess, target_yr, bldg,
-                        #                room, billcode, intdhsg, rsvstat)
+                        #                room, billcode, intdhsg, rsvstat, EARL)
                         # print(x)
                     else:
                         print("No prior rec - insert clean")
                         # x = insert_ssr(carth_id, target_sess, target_yr,
-                        #                "UN", "UN", "", "R", "R")
+                        #                "UN", "UN", "", "R", "R", EARL)
                         # print(x)
 
     else:

@@ -10,25 +10,27 @@ import logging
 from logging.handlers import SMTPHandler
 # importing required modules
 from zipfile import ZipFile
-# django settings for shell environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djequis.settings")
 
-# prime django
 import django
+# django settings for shell environment
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
 django.setup()
 
 # django settings for script
 from django.conf import settings
 from django.db import connections
-from djequis.core.utils import sendmail
-from djzbar.utils.informix import get_engine
+from djtreeater.core.utilities import fn_send_mail
+# from djzbar.utils.informix import get_engine
 from djtools.fields import TODAY
-from djzbar.settings import INFORMIX_EARL_TEST
-from djzbar.settings import INFORMIX_EARL_PROD
-from djzbar.settings import MSSQL_LENEL_EARL
-from adirondack_sql import ADIRONDACK_QUERY
-from picture_sql import PICTURE_ID_QUERY
-from picture_sql import LENEL_PICTURE_QUERY
+from djimix.core.utils import get_connection, xsql
+from djimix.core.database import get_connection, xsql
+# from djzbar.settings import INFORMIX_EARL_TEST
+# from djzbar.settings import INFORMIX_EARL_PROD
+# from djzbar.settings import MSSQL_LENEL_EARL
+from djtreeater.sql.adirondack import ADIRONDACK_QUERY
+from djtreeater.sql.picture import PICTURE_ID_QUERY
+from djtreeater.sql.picture import LENEL_PICTURE_QUERY
+
 
 # informix environment
 os.environ['INFORMIXSERVER'] = settings.INFORMIXSERVER
@@ -114,9 +116,12 @@ def sftp_upload(upload_file):
             sftp.put(upload_file, preserve_mtime=True)
             # close sftp connection
             sftp.close()
-    except Exception, e:
+    except Exception as e:
         SUBJECT = 'ADIRONDACK UPLOAD failed'
-        BODY = 'Unable to PUT .zip file to adirondack server.\n\n{0}'.format(str(e))
+        BODY = 'Unable to PUT .zip file to adirondack ' \
+               'server.\n\n{0}'.format(repr(e))
+        fn_write_error("Error in adirondack student_pictures.py, "
+                       "sftp_upload, Error = " + repr(e))
         sendmail(
             settings.ADIRONDACK_TO_EMAIL,settings.ADIRONDACK_FROM_EMAIL,
             BODY, SUBJECT
@@ -143,9 +148,9 @@ def main():
         global EARL
         # determines which database is being called from the command line
         if database == 'cars':
-            EARL = INFORMIX_EARL_PROD
+            EARL = settings.INFORMIX_ODBC
         if database == 'train':
-            EARL = INFORMIX_EARL_TEST
+            EARL = settings.INFORMIX_ODBC_TRAIN
         else:
             # this will raise an error when we call get_engine()
             # below but the argument parser should have taken
@@ -153,20 +158,36 @@ def main():
             EARL = None
 
         # print(PICTURE_ID_QUERY)
-        engine = get_engine(EARL)  # do_sql calls get engine
-        data_result = engine.execute(PICTURE_ID_QUERY)
+        connection = get_connection(EARL)
+        # connection closes when exiting the 'with' block
+        with connection:
+            data_result = xsql(
+                PICTURE_ID_QUERY, connection,
+                key=settings.INFORMIX_DEBUG
+            ).fetchall()
+        retID = list(data_result)
 
-        retID = list(data_result.fetchall())
         if retID is None:
             SUBJECT = '[adirondack Application] failed'
             BODY = "SQL Query returned no data."
-            print(SUBJECT)
+            # print(BODY)
             sendmail(
                 settings.ADIRONDACK_TO_EMAIL,settings.ADIRONDACK_FROM_EMAIL,
                 BODY, SUBJECT
             )
         else:
             # print("Query 1 successful")
+            pass
+
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # Could not return lenel_earl fro some reason
+            # Need to move this at some point
+            # Wonder tho, if pictures are still on Lenel???
+            LENEL_EARL = 'DSN=MSSQL-LENEL;UID=C8Lenel;PWD=leneL8cvti'
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+            # LENEL_EARL = settings.LENEL_EARL
+            print("EARL = " + LENEL_EARL)
 
             try:
                 for row in retID:
@@ -175,13 +196,14 @@ def main():
                     # print("ARG = " + LENEL_PICTURE_ARG)
                     try:
                         # query blob data form the authors table
-                        # print(MSSQL_LENEL_EARL)
-                        conn = pyodbc.connect(MSSQL_LENEL_EARL)
+                        conn = pyodbc.connect(LENEL_EARL)
+                        # if conn:
+                        #     print("Connected to Lenel")
                         result = conn.execute(LENEL_PICTURE_QUERY.format(int(LENEL_PICTURE_ARG)))
-
                         for row1 in result:
                             photo = row1[0]
                             filename = str(LENEL_PICTURE_ARG) + ".jpg"
+                            # print(filename)
                             # write blob data into a file
                             write_file(photo, filepath + filename)
                         result.close()
@@ -197,14 +219,17 @@ def main():
                             pass
                 # print("Pictures Done")
             except Exception as e:
-                print("Error getting photo " + e.message)
+                # print("Error getting photo " + repr(e))
                 SUBJECT = 'ADIRONDACK UPLOAD failed'
                 BODY = 'Unable to PUT .zip file to ' \
                        'adirondack server.\n\n{0}'.format(str(e))
+                fn_write_error(
+                    "Error in adirondack student_pictures.py, Error = "
+                    + repr(e))
                 sendmail(
                 settings.ADIRONDACK_TO_EMAIL, settings.ADIRONDACK_FROM_EMAIL,
                 BODY, SUBJECT
-            )
+                )
 
             # Remove previous file
             if os.path.exists(filepath + "carthage_studentphotos.zip"):
@@ -229,8 +254,7 @@ def main():
                          os.remove(filepath + filename)
 
                 except Exception as e:
-                    print(e.message)
-                    print(e.__str__())
+                    print(repr(e))
 
             # print("cleanup done")
 
@@ -239,13 +263,13 @@ def main():
             sftp_upload(filepath + "carthage_studentphotos.zip")
 
     except Exception as e:
-
-        # fn_write_error("Error in adirondack buildcsv.py, Error = " + e.message)
+        fn_write_error("Error in adirondack student_pictures.py, Error = "
+                                + repr(e))
         SUBJECT = '[adirondack Application] Error'
-        BODY = "Error in adirondack buildcsv.py, Error = " + e.message
-        # sendmail(settings.ADIRONDACK_TO_EMAIL,settings.ADIRONDACK_FROM_EMAIL,
-        #     BODY, SUBJECT)
-        print(SUBJECT, BODY)
+        BODY = "Error in adirondack student_pictures.py, Error = " + repr(e)
+        sendmail(settings.ADIRONDACK_TO_EMAIL,settings.ADIRONDACK_FROM_EMAIL,
+            BODY, SUBJECT)
+        # print(SUBJECT, BODY)
 
 
 if __name__ == "__main__":
@@ -254,14 +278,14 @@ if __name__ == "__main__":
     database = args.database
 
     if not database:
-        print "mandatory option missing: database name\n"
+        print("mandatory option missing: database name\n")
         parser.print_help()
         exit(-1)
     else:
         database = database.lower()
 
     if database != 'cars' and database != 'train' and database != 'sandbox':
-        print "database must be: 'cars' or 'train' or 'sandbox'\n"
+        print("database must be: 'cars' or 'train' or 'sandbox'\n")
         parser.print_help()
         exit(-1)
 

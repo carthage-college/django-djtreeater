@@ -322,7 +322,7 @@ Q_GET_TERM = '''select distinct
                   and trim(sess)||TO_CHAR(yr) = 
                   CASE
                       -- ACYR 1920 After May 20 
-                      WHEN TODAY >= '05/20/'||YEAR(TODAY)
+                      WHEN TODAY >= '05/10/'||YEAR(TODAY)
                           AND TODAY <= '12/31/'||YEAR(TODAY)
                           THEN
                               'RA'||YEAR(TODAY)

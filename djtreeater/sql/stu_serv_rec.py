@@ -1,4 +1,7 @@
 
+from djimix.core.utils import get_connection, xsql
+
+
 def get_fall_to_spring(target_sess, target_yr):
     """FIND ALL CURRENT STUDENTS WHO ARE ENROLLED OR REGISTERED FOR THE
         UPCOMING SPRING TERM OR WERE REGISTERED IN THE FALL ???
@@ -102,16 +105,19 @@ def get_spring_to_fall(target_sess, target_yr):
             NVL(PER.plan_grad_sess,'') || NVL(PER.plan_grad_yr,'') || NVL(PER.plan_grad_grp,'')    
             NOT IN    ('RC' || {1} || 'MAY', 'RE' || {1} || 'SUM', 'RC' || {1} || 'MYST')
             
+       -- AND PER.id = 1409500 
+
         AND PER.id NOT IN
     (SELECT id 
     FROM stu_serv_rec 
     WHERE sess = '{0}' AND yr = {1}) 
+   --limit 100
         '''.format(target_sess, target_yr)
 
     return SQL_SPRING_TO_FALL
 
 
-def insert_ssr(id, sess, yr, bldg, room, billcode, intendhsg, rsvstat):
+def insert_ssr(id, sess, yr, bldg, room, billcode, intendhsg, rsvstat, EARL):
 
     try:
         '''Basic insert sql'''
@@ -127,13 +133,13 @@ def insert_ssr(id, sess, yr, bldg, room, billcode, intendhsg, rsvstat):
             "", "", "", "{5}")'''.format(id, sess, yr, bldg, room, billcode,
                                          intendhsg, rsvstat )
 
-        print(q_ins)
-        # connection = get_connection(EARL)
-        # with connection:
-        #     cur = connection.cursor()
-        #     cur.execute(q_ins)
-        #
-        # connection.commit()
+        # print(q_ins)
+        connection = get_connection(EARL)
+        with connection:
+            cur = connection.cursor()
+            cur.execute(q_ins)
+
+        connection.commit()
 
         return 1
     except Exception as e:

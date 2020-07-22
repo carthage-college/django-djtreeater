@@ -59,6 +59,7 @@ def fn_get_bill_code(idnum, bldg, roomtype, roomassignmentid, session,
 
         response = requests.get(url)
         x = json.loads(response.content)
+        # print(len(x['DATA']))
         if not x['DATA']:
             # print("No data")
             if bldg == 'CMTR':
@@ -72,6 +73,7 @@ def fn_get_bill_code(idnum, bldg, roomtype, roomassignmentid, session,
             return billcode
         else:
             for rows in x['DATA']:
+                # print(roomassignmentid)
                 if roomassignmentid == rows[14]:
                     billcode = rows[6]
                     return billcode
@@ -116,6 +118,7 @@ def fn_translate_bldg_for_adirondack(bldg_code):
         "TAR": "TAR",
         "UN": "UN",
         "ABRD": "ABRD",
+        "APT": "APT",
         "CMTR": "CMTR",
         "OFF": "OFF",
         "TOWR": "TOWR",

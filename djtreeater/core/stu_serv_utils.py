@@ -3,8 +3,8 @@ def fn_set_term_vars():
     # this_yr = datetime.now().year
     # this_month = datetime.now().month
 
-    this_yr = 2019
-    this_month = 11
+    this_yr = 2020
+    this_month = 5
 
     # print("Current Month = " + str(this_month))
     # print("Current Year = " + str(this_yr))

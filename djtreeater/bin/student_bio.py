@@ -126,7 +126,7 @@ def main():
                 ADIRONDACK_QUERY, connection, key=settings.INFORMIX_DEBUG
             ).fetchall()
 
-        print(data_result)
+        # print(data_result)
         ret = list(data_result)
         if ret is None:
             SUBJECT = "[Adirondack] Application failed"

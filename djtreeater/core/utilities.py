@@ -350,11 +350,13 @@ def fn_encode_rows_to_utf8(rows):
             encoded_row = []
             for value in row:
                 #if isinstance(value, str):
-                #    value = value.decode('cp1252').encode("utf-8")
+                # value = value.decode('cp1252').encode("utf-8")
                 encoded_row.append(value)
             encoded_rows.append(encoded_row)
         except Exception as e:
-            fn_write_error("Error in encoded_rows routine " + e.message)
+            print("Error in encoded_rows routine " + e.message)
+
+            fn_write_error("Error in encoded_rows routine " + repr(e))
     return encoded_rows
 
 
@@ -527,7 +529,7 @@ def fn_check_cx_records(totcod, prd, jndate, stuid, amt, EARL):
         else:
             return 1
     except Exception as e:
-        print("Error in misc_fees.py - fn_check_cx_records:  " + str(e))
+        print("Error in misc_fees.py - fn_check_cx_records:  " + repr(e))
         # fn_write_error("Error in misc_fees.py - Main: "
         #                + e.message)
         return 0

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 ADIRONDACK_QUERY = '''
 SELECT  
     TO_CHAR(IR.id) AS STUDENT_NUMBER, 

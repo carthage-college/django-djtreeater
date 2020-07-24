@@ -118,6 +118,7 @@ def main():
         # --------------------------
         # Create the txt file
 
+        # print(ADIRONDACK_QUERY)
         connection = get_connection(EARL)
         # connection closes when exiting the 'with' block
         with connection:
@@ -125,6 +126,7 @@ def main():
                 ADIRONDACK_QUERY, connection, key=settings.INFORMIX_DEBUG
             ).fetchall()
 
+        print(data_result)
         ret = list(data_result)
         if ret is None:
             SUBJECT = "[Adirondack] Application failed"
@@ -137,10 +139,13 @@ def main():
         else:
             fn_write_student_bio_header()
             # print("Query successful")
+            # print(ret)
             with open(adirondackdata, 'w') as file_out:
                 csvWriter = csv.writer(file_out, delimiter='|')
                 encoded_rows = fn_encode_rows_to_utf8(ret)
                 for row in encoded_rows:
+                # for row in ret:
+                #     print(row)
                     csvWriter.writerow(row)
             file_out.close()
 
@@ -159,7 +164,8 @@ def main():
             logger.error(BODY)
 
     except Exception as e:
-        logger.error("Error in adirondack buildcsv.py, Error = " + repr(e))
+        # print(str(e))
+        logger.error("Error in adirondack student_bio.py, Error = " + repr(e))
         SUBJECT = '[Adirondack] Application Error'
         BODY = "Error in adirondack student_bio.py, Error = " + repr(e)
         send_mail (

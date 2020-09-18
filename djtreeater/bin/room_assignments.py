@@ -189,9 +189,8 @@ def main():
                   +  "HALLCODE=" + hall \
                   + "&" + \
                   "Posted=" + posted
-        # \
-        #            + "&" \
-        #            "STUDENTNUMBER=" + "1601033"
+                   # + "&" \
+                   # "STUDENTNUMBER=" + "1325406"
         # # "CurrentFuture=-1" + "&" \
         #                      "Ghost=0" + "&" \
         # NOTE:  HALLCODE can be empty
@@ -503,7 +502,7 @@ def main():
                                         VALUES
                                             ({0},'{1}', {2}, '{3}', '{4}', '{5}', 
                                             '{6}', '{7}', '{8}','{9}')
-                                    '''.format(carthid, sess, year, 'R', 'R',
+                                    '''.format(carthid, sess, year, 'R', intendhsg,
                                                'MAIN', bldg, room, checkedindate,
                                                billcode)
                                     # print(q_create_stu_serv_rec)

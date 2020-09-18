@@ -551,3 +551,24 @@ def fn_set_terms():
         last_term = 'RC' + str(dt.date.today().year)
     return [last_term, current_term]
 
+def fn_set_grad_terms():
+    # Only RA and RC matter.
+    # print(dt.date.today().month)
+    # print(str(datetime.today()))
+    # If we are in spring RC term, last term will be RA with Year - 1
+    # EX:  RC2020 current RA2019 last
+    if dt.date.today().month < 7:
+        current_term = 'RC' + str(dt.date.today().year)
+        last_term = 'RA' + str(dt.date.today().year - 1)
+        current_term_gr = 'GC' + str(dt.date.today().year)
+        last_term_gr = 'GA' + str(dt.date.today().year - 1)
+    # If we are in summer or fall both RA and RC will be current year
+    # EX:  RA2019 current RC2019 last
+    else:
+        current_term = 'RA' + str(dt.date.today().year)
+        last_term = 'RC' + str(dt.date.today().year)
+        current_term_gr = 'GA' + str(dt.date.today().year)
+        last_term_gr = 'GC' + str(dt.date.today().year - 1)
+    print([last_term, current_term, current_term_gr, last_term_gr])
+    return [last_term, current_term, current_term_gr, last_term_gr]
+

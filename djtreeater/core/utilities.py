@@ -1,12 +1,11 @@
 import os
 import csv
-import datetime
 import json
 import calendar
 import time
-import datetime as dt
+import datetime
 # from datetime import datetime
-# from datetime import date
+from datetime import date
 import requests
 import codecs
 import hashlib
@@ -120,6 +119,7 @@ def fn_translate_bldg_for_adirondack(bldg_code):
         "ABRD": "ABRD",
         "APT": "APT",
         "CMTR": "CMTR",
+        "RMTE": "RMTE",
         "OFF": "OFF",
         "TOWR": "TOWR",
         "WD": "WD",
@@ -424,6 +424,60 @@ def fn_sendmailfees(to, frum, body, subject):
         pass
 
 
+def fn_sendmailfees_all_trms(to, frum, body, subject):
+    # Create the message
+    msg = MIMEMultipart()
+
+    # print("IN UTILITY")
+    # email to addresses may come as list
+    msg['To'] = to
+    msg['From'] = frum
+    msg['Subject'] = "From " + frum + " - " + subject
+    # msg.add_header('reply-to', frum)
+    msg['Reply-To'] = frum
+    # By default, SMTP will always use smtp@carthage.edu as the from address
+    # Reply to allows a different return email option
+    # If the user clicks reply, it will bring up the From address
+
+    text = ''
+
+    # This can be outside the file collection loop
+    msg.attach(MIMEText(body, 'csv'))
+
+    files = os.listdir(settings.ADIRONDACK_TXT_OUTPUT)
+    # filenames = []
+    for f in files:
+
+        if f.find('2010') != -1 or f.find('2011') != -1 \
+                or f.find('2031') != -1 or f.find('2040') != -1:
+            last_modified = time.ctime(
+                os.path.getmtime(settings.ADIRONDACK_TXT_OUTPUT + f))
+            dtm = datetime.datetime.strptime(last_modified, "%a %b %d %H:%M:%S %Y")
+            sdt = datetime.datetime.strftime(dtm, "%m/%d/%y")
+            td = datetime.datetime.today()
+            tds = datetime.datetime.strftime(td, "%m/%d/%y")
+            if tds == sdt:
+                part = MIMEBase('application', "octet-stream")
+                part.set_payload(open(settings.ADIRONDACK_TXT_OUTPUT
+                                      + f, "rb").read())
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition',
+                                'attachment; filename="%s"' % os.path.basename(
+                                    f))
+                msg.attach(part)
+                text = msg.as_string()
+
+    server = smtplib.SMTP('localhost')
+    # show communication with the server
+    try:
+        server.sendmail(frum, to.split(','), text)
+
+    finally:
+        # server.quit()
+        pass
+
+
+
 def fn_send_mail(to, frum, body, subject):
     """
     Stock sendmail in core does not have reply to or split of to emails
@@ -541,34 +595,35 @@ def fn_set_terms():
     # print(str(datetime.today()))
     # If we are in spring RC term, last term will be RA with Year - 1
     # EX:  RC2020 current RA2019 last
-    if dt.date.today().month < 7:
-        current_term = 'RC' + str(dt.date.today().year)
-        last_term = 'RA' + str(dt.date.today().year - 1)
+    if datetime.date.today().month < 7:
+        current_term = 'RC' + str(datetime.date.today().year)
+        last_term = 'RA' + str(datetime.date.today().year - 1)
     # If we are in summer or fall both RA and RC will be current year
     # EX:  RA2019 current RC2019 last
     else:
-        current_term = 'RA' + str(dt.date.today().year)
-        last_term = 'RC' + str(dt.date.today().year)
+        current_term = 'RA' + str(datetime.date.today().year)
+        last_term = 'RC' + str(datetime.date.today().year)
     return [last_term, current_term]
+
 
 def fn_set_grad_terms():
     # Only RA and RC matter.
-    # print(dt.date.today().month)
+    # print(datetime.date.today().month)
     # print(str(datetime.today()))
     # If we are in spring RC term, last term will be RA with Year - 1
     # EX:  RC2020 current RA2019 last
-    if dt.date.today().month < 7:
-        current_term = 'RC' + str(dt.date.today().year)
-        last_term = 'RA' + str(dt.date.today().year - 1)
-        current_term_gr = 'GC' + str(dt.date.today().year)
-        last_term_gr = 'GA' + str(dt.date.today().year - 1)
+    if datetime.date.today().month < 7:
+        current_term = 'RC' + str(datetime.date.today().year)
+        last_term = 'RA' + str(datetime.date.today().year - 1)
+        current_term_gr = 'GC' + str(datetime.date.today().year)
+        last_term_gr = 'GA' + str(datetime.date.today().year - 1)
     # If we are in summer or fall both RA and RC will be current year
     # EX:  RA2019 current RC2019 last
     else:
-        current_term = 'RA' + str(dt.date.today().year)
-        last_term = 'RC' + str(dt.date.today().year)
-        current_term_gr = 'GA' + str(dt.date.today().year)
-        last_term_gr = 'GC' + str(dt.date.today().year - 1)
+        current_term = 'RA' + str(datetime.date.today().year)
+        last_term = 'RC' + str(datetime.date.today().year)
+        current_term_gr = 'GA' + str(datetime.date.today().year)
+        last_term_gr = 'GC' + str(datetime.date.today().year - 1)
     print([last_term, current_term, current_term_gr, last_term_gr])
     return [last_term, current_term, current_term_gr, last_term_gr]
 

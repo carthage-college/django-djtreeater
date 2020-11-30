@@ -77,20 +77,22 @@ TEMPLATES = [
     },
 ]
 # caching
+
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
-        #'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-        #'LOCATION': '127.0.0.1:11211',
-        #'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-        #'LOCATION': '/var/tmp/django_djtreeater_cache',
-        #'TIMEOUT': 60*20,
-        #'KEY_PREFIX': 'DJTREEATOR_',
-        #'OPTIONS': {
-        #    'MAX_ENTRIES': 80000,
-        #}
+        # 'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': '/var/tmp/django_djtreeater_cache',
+        'TIMEOUT': 60*20,
+        'KEY_PREFIX': 'DJTREEATOR_',
+        'OPTIONS': {
+           'MAX_ENTRIES': 80000,
+        }
     }
 }
+
 # SMTP settings
 EMAIL_HOST = ''
 EMAIL_HOST_USER = ''

@@ -14,6 +14,7 @@ import argparse
 import logging
 import django
 import string
+
 # from string import maketrans
 # ________________
 # Note to self, keep this here
@@ -27,7 +28,8 @@ from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
     fn_mark_room_posted, fn_translate_bldg_for_adirondack, \
-    fn_mark_bill_exported, fn_set_terms, fn_check_cx_records, fn_sendmailfees
+    fn_mark_bill_exported, fn_set_terms, fn_check_cx_records, \
+    fn_sendmailfees, fn_set_grad_terms, fn_sendmailfees_all_trms
 
 from djimix.core.utils import get_connection, xsql
 
@@ -90,6 +92,7 @@ def main():
         key = settings.ADIRONDACK_TEST_API_SECRET
     # print(API_server)
 
+
     try:
         utcts = fn_get_utcts()
         hashstring = str(utcts) + key
@@ -100,47 +103,32 @@ def main():
         datetimestr = time.strftime("%Y%m%d")
         timestr = time.strftime("%H%M")
 
-        """Figure out what terms to limit to"""
-        last_term, current_term = fn_set_terms()
-        # print("new last = " + last_term)
-        # print("new current = " + current_term)
+        # print("GET TERMS")
+        # Adirondack dataset
+        bill_list = []
 
-        """Terms in adirondack have a space between sess and year"""
-        # print(current_term)
-        adirondack_term = current_term[:2] + " " + current_term[2:]
-        # print(adirondack_term)
+        q_get_terms = '''select sess, yr, beg_date, end_date
+            from acad_cal_rec 
+            where --yr = 2020 and 
+            sess in ("RA", "RC", "RE", "GA", "GC", "GE")
+            and subsess = ""
+            and (end_date > TODAY
+            and beg_date < TODAY)'''
 
-        """Get data from Adirondack"""
+        connection = get_connection(EARL)
+        # print(q_validate_stuserv_rec)
+        """ connection closes when exiting the 'with' block """
+        with connection:
+            data_result = xsql(
+                q_get_terms, connection,
+                key=settings.INFORMIX_DEBUG
+            ).fetchall()
+        ret = list(data_result)
 
-        url = "https://carthage.datacenter.adirondacksolutions.com/" \
-            +API_server+"/apis/thd_api.cfc?" \
-            "method=studentBILLING&" \
-            "Key=" + key \
-            + "&" + "utcts=" + str(utcts) \
-            + "&" + "h=" + hash_object.hexdigest() \
-            + "&" + "TIMEFRAMENUMERICCODE=" + adirondack_term \
-            + "&" + "AccountCode=2010,2040,2011,2031" \
-            + "&" + "Exported=0"
-
-            # + "&" + "STUDENTNUMBER=1501237"
-
-        """
-        DEFINIIONS
-        Exported: -1 exported will be included, 0 only non-exported
-        ExportCharges: if -1 then charges will be marked as exported
-        DO NOT mark exported here.  Wait for later step
-        """
-        # print("URL = " + url)
-
-        response = requests.get(url)
-        x = json.loads(response.content)
-        if not x['DATA']:
-            print("No new data found")
-            pass
-        else:
+        if ret:
             """
-            Cleanup previous run CSV files
-            """
+                          Cleanup previous run CSV files
+                          """
             files = os.listdir(settings.ADIRONDACK_TXT_OUTPUT)
             for f in files:
                 ext = f.find(".csv")
@@ -151,6 +139,35 @@ def main():
                                 "ascii_archive/" +
                                 f[:ext] + "_" + timestr + f[ext:])
 
+
+        for row in ret:
+            i = row[0].strip() + ' ' + str(row[1])
+
+            adirondack_term = i
+            """Get data from Adirondack"""
+
+            url = "https://carthage.datacenter.adirondacksolutions.com/" \
+                +API_server+"/apis/thd_api.cfc?" \
+                "method=studentBILLING&" \
+                "Key=" + key \
+                + "&" + "utcts=" + str(utcts) \
+                + "&" + "h=" + hash_object.hexdigest() \
+                + "&" + "TIMEFRAMENUMERICCODE=" + adirondack_term \
+                + "&" + "AccountCode=2010,2040,2011,2031" \
+                + "&" + "Exported=0"
+                # + "&" + "STUDENTNUMBER=1566304"
+
+            """
+            DEFINIIONS
+            Exported: -1 exported will be included, 0 only non-exported
+            ExportCharges: if -1 then charges will be marked as exported
+            DO NOT mark exported here.  Wait for later step
+            """
+            # print("URL = " + url)
+
+            response = requests.get(url)
+            x = json.loads(response.content)
+
             """
             Make sure no duplicate records get into the system
             Use the STUDENTBILLINGINTERNALID number - uniquie row id for
@@ -160,22 +177,25 @@ def main():
             IF the new data pulls the same ID number, pass through
             """
 
-            # ------------------------------------------
-            # Step 1 would be to build the list of items already written to
-            # a csv for the terms
-            # ------------------------------------------
+            """ ------------------------------------------
+               Step 1 would be to build the list of items already written to
+               a csv for the terms
+            ------------------------------------------"""
 
             # Set up the file names for the duplicate check
-            cur_file = settings.ADIRONDACK_TXT_OUTPUT + 'billing_logs/' + \
-                current_term + '_processed.csv'
-            last_file = settings.ADIRONDACK_TXT_OUTPUT + 'billing_logs/' + \
-                last_term + '_processed.csv'
+            cur_file = settings.ADIRONDACK_TXT_OUTPUT + "billing_logs/" + \
+                       adirondack_term.replace(" ","") + '_processed.csv'
+            # cur_file = settings.ADIRONDACK_TXT_OUTPUT + 'billing_logs/' +
+            # current_term + '_processed.csv'
+            # last_file = settings.ADIRONDACK_TXT_OUTPUT
+            #     last_term + '_processed.csv'
 
             """Initialize a list of record IDs -- previously processed rows"""
             the_list = []
 
             """ Make sure file for the current term has been created"""
             if os.path.isfile(cur_file):
+                # print ("cur_file exists")
                 fst = cur_file
                 with open(fst, 'r') as ffile:
                     csvf = csv.reader(ffile)
@@ -193,30 +213,13 @@ def main():
             else:
                 # print ("No file")
                 fn_write_billing_header(cur_file)
-#
-            """ For extra insurance, include last term items in the list"""
-            if os.path.isfile(last_file):
-                # print ("last_file exists")
-                lst = last_file
-                with open(lst, 'r') as lfile:
-                    csvl = csv.reader(lfile)  # the [1:] skips header
-                    next(lfile)
-                    for row in csvl:
-                        # term = row[0]
-                        assign_id = int(row[16].strip())
-                        the_list.append(assign_id)
-                lfile.close()
-            else:
-                # print ("No file")
-                fn_write_billing_header(last_file)
-
 
             """
             Step 2 would be to loop through the new charges returned
             from adirondack in the API query
             """
 
-            """ 
+            """
             Note.  Each account code must be a separate file for ASCII Post
             2010  Improper Checkout
             2011  Extended stay charge
@@ -226,14 +229,12 @@ def main():
             calculated in Adirondack
             """
 
-            # Adirondack dataset
-            bill_list = []
-
             for i in x['DATA']:
                 # As the csv is being created
                 # Compare each new file's line ID
-                adir_term = i[4][:2] + i[4][-4:]
+                adir_term = i[4]
                 ascii_term = i[4][:2] + i[4][-2:]
+
 
                 # Round the amount to 2 decimal places
                 amount = '{:.2f}'.format(i[2])
@@ -243,12 +244,8 @@ def main():
                 item_date = i[1][-4:] + "-" + i[1][:2] + "-" + i[1][3:5]
                 tot_code = str(i[6])
                 item_type = i[13]
-                # print(item_type)
 
-                # print("Adirondack term to check = " + adir_term)
-                # print("CX Current Term = " + current_term)
-
-                if current_term == adir_term:
+                if adirondack_term == adir_term:
                     """ here we look for a specific item"""
 
                     """ FORMAT DATE FOR SQL"""
@@ -264,15 +261,15 @@ def main():
                     else:
                         print("WARNING:  Matching item exist in CX database")
                         continue
-                    # print(the_list)
 
                     """Make sure item was not pulled previously"""
                     if int(bill_id) in the_list:
-                        print("Item " + bill_id + " already in list")
+                        # print("Item " + bill_id + " already in list")
                         pass
                     else:
                         """Write the ASCII file and log the entry for
                            future reference"""
+                        # print("Write to ASCII")
                         rec = []
                         rec.append(i[1])
 
@@ -290,7 +287,8 @@ def main():
                         file_descr = item_type.replace(" ", "_")
 
                         fee_file = settings.ADIRONDACK_TXT_OUTPUT + tot_code \
-                            + "_" + file_descr + "_" + datetimestr + ".csv"
+                            + "_" + file_descr + "_" \
+                                   + datetimestr + ".csv"
 
                         with open(fee_file, 'a') as fee_output:
                             csvwriter = csv.writer(fee_output)
@@ -303,70 +301,60 @@ def main():
                         with open(f, 'a') as wffile:
                             csvwriter = csv.writer(wffile)
                             csvwriter.writerow(i)
+        # print(bill_list)
+        files = os.listdir(settings.ADIRONDACK_TXT_OUTPUT)
+        csv_exists = False
+        fils = []
 
-                else:
-                    """In case of a charge from the previous term"""
-                    if int(i[16]) in the_list:
-                        pass
-                        # print("Item " + str(i[16]) + " already in list")
-                    else:
-                        rec.append(i[1])
-                        tmpstr = str(i[5][:26])
-                        descr = ''.join(filter(str.isalnum, tmpstr))
-                        rec.append(descr.strip())
-                        rec.append("1-003-10041")
-                        # Round this to two decimals
-                        rec.append('{:.2f}'.format(i[2]))
-                        rec.append(stu_id)
-                        rec.append("S/A")
-                        rec.append(tot_code)
-                        rec.append(ascii_term)
+        """
+        Each time I find a record it writes or appends to the file
+        the file will therefore have today as the modified date
+        Logic: if TODAY is equal to Last modified file data then 
+        append that file to the list
+        otherwise the file date would be older than today, meaning nothing 
+        has changed
+        if the program does not run, then the record will still be in 
+        THD to pickup next time, it will make the change using TODAY
+        as the date.   
+        """
 
-                        file_descr = item_type.replace(" ", "_")
-
-                        fee_file = settings.ADIRONDACK_TXT_OUTPUT + tot_code \
-                            + "_" + file_descr + "_" + datetimestr + ".csv"
-
-                        with open(fee_file, 'a') as fee_output:
-                            csvwriter = csv.writer(fee_output)
-                            csvwriter.writerow(rec)
-                        fee_output.close()
-
-                        """Write record of item to PROCESSED list"""
-                        """NOTE--QUOTE_MINIMAL is because timestamp 
-                            has a comma"""
-                        f = cur_file
-
-                        with open(f, 'a') as wffile:
-                            csvwriter = csv.writer(wffile)
-                            csvwriter.writerow(i)
-                        wffile.close()
-
-            files = os.listdir(settings.ADIRONDACK_TXT_OUTPUT)
-            csv_exists = False
-            for f in files:
-                if (f.startswith("2010") or f.startswith("2011")
-                        or f.startswith("2031") or f.startswith("2040")):
+        for f in files:
+            if (f.startswith("2010") or f.startswith("2011")
+                    or f.startswith("2031") or f.startswith("2040")):
+                last_modified = time.ctime(os.path.getmtime(settings.ADIRONDACK_TXT_OUTPUT + f))
+                # print(last_modified)
+                dtm = datetime.strptime(last_modified, "%a %b %d %H:%M:%S %Y")
+                sdt = datetime.strftime(dtm, "%m/%d/%y")
+                td = datetime.today()
+                tds = datetime.strftime(td, "%m/%d/%y")
+                # print(sdt)
+                if tds == sdt:
+                    fils.append(f)
                     csv_exists = True
+        # print(fils)
 
-            """Mark bill items as exported"""
-            for bill_id in bill_list:
-                # print(bill_id)
-                fn_mark_bill_exported(bill_id, API_server, key)
+        """Mark bill items as exported"""
+        for bill_id in bill_list:
+            # print(bill_id)
+            fn_mark_bill_exported(bill_id, API_server, key)
 
-            """When all done, email csv file"""
-            if csv_exists == True:
-                # print("EMAIL TO " + str(settings.ADIRONDACK_ASCII_EMAIL))
-                subject = 'Housing Miscellaneous Fees'
-                body = 'There are housing fees to process via ASCII ' \
-                    'post'
+        """When all done, email csv file"""
+        """Needs to be outside the for loop"""
+        if csv_exists == True:
+            # print("EMAIL TO " + str(settings.ADIRONDACK_ASCII_EMAIL))
+            subject = 'Housing Miscellaneous Fees'
+            body = 'There are housing fees to process via ASCII ' \
+                'post'
 
-                fn_sendmailfees(settings.ADIRONDACK_ASCII_EMAIL,
-                                settings.ADIRONDACK_FROM_EMAIL,
-                                body, subject
-                                )
+            fn_sendmailfees_all_trms(settings.ADIRONDACK_ASCII_EMAIL,
+                            settings.ADIRONDACK_FROM_EMAIL,
+                            body, subject
+                            )
+
 
     except Exception as e:
+        # print("Error in misc_fees.py - Main: "
+        #                + repr(e))
         fn_write_error("Error in misc_fees.py - Main: "
                        + repr(e))
 

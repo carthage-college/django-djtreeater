@@ -60,8 +60,10 @@ def fn_get_bill_code(idnum, bldg, roomtype, roomassignmentid, session,
         x = json.loads(response.content)
         # print(len(x['DATA']))
         if not x['DATA']:
-            # print("No data")
+            print("No data")
             if bldg == 'CMTR':
+                billcode = 'CMTR'
+            elif bldg == 'RMTE':
                 billcode = 'CMTR'
             elif bldg == 'OFF':
                 billcode = 'OFF'

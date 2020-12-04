@@ -196,7 +196,7 @@ def main():
               + "&" + \
               "Posted=" + posted
               # + "&" \
-              # "STUDENTNUMBER=" + "1387820"
+              # "STUDENTNUMBER=" + "1567093"
         # + "&" \
         # "HallCode=" + 'TOWR'
 
@@ -220,10 +220,8 @@ def main():
         'In theory, every room assignment in Adirondack should have
         a bill code'''
 
-
         # print("URL = " + url)
         # print("______")
-
 
         try:
             response = requests.get(url)
@@ -273,12 +271,11 @@ def main():
                 with open(room_file, 'a') as room_output:
                     for i in room_data:
                         try:
-                            # print("__ i LOOP ____")
+
                             if i[0] is None:
-                                print("No ID")
+                                # print("No ID")
                                 pass
                             else:
-                                # print(i)
 
                                 carthid = i[0]
                                 bldgname = i[1]
@@ -349,8 +346,8 @@ def main():
                                                     - len(bldgname):]
                                 elif bldg == 'RMTE':
                                     intendhsg = 'C'
-                                    room = bldgname[(bldgname.find('_') + 1)
-                                                    - len(bldgname):]
+                                    room = i[4]
+
                                 elif bldg == 'UN':
                                     intendhsg = 'R'
                                     room = bldgname[(bldgname.find('_') + 1)
@@ -418,8 +415,8 @@ def main():
                                 if len(ret) != 0:
                                     # if ret is not None:
                                     # print("Stu Serv Rec Found")
-                                    # print(billcode)
-                                    if billcode != 0:
+                                    if billcode:
+                                    # if billcode != 0 and str(billcode) != '':
                                         """compare rsv_stat, intend_hsg, bldg, room,
                                         billcode -- Update only if something has
                                         changed"""
@@ -434,25 +431,30 @@ def main():
                                                     or row[10] != billcode:
 
                                                 # print("Need to update stu_serv_rec")
+
                                                 q_update_stuserv_rec = '''
                                                     UPDATE stu_serv_rec
                                                     set rsv_stat = ?,
                                                     intend_hsg = ?, campus = ?,
-                                                    bldg = ?, room = ?,
+                                                    bldg = ?, 
+                                                    room = ?,
                                                     bill_code = ?
                                                     where id = ? and sess = ? and
                                                     yr = ?'''
                                                 q_update_stuserv_args = (rsvstat,
-                                                                         intendhsg,
-                                                                         "MAIN", bldg,
-                                                                         room,
-                                                                         billcode,
-                                                                         int(carthid),
-                                                                         sess,
-                                                                         int(year))
+                                                         intendhsg,
+                                                         "MAIN",
+                                                         bldg,
+                                                         room,
+                                                         billcode,
+                                                         int(carthid),
+                                                         sess,
+                                                         int(year))
+
+
                                                 connection = get_connection(EARL)
-                                                print(q_update_stuserv_rec)
-                                                print(q_update_stuserv_args)
+                                                # print(q_update_stuserv_rec)
+                                                # print(q_update_stuserv_args)
                                                 """ connection closes when exiting the
                                                            'with' block """
 
@@ -463,11 +465,12 @@ def main():
                                                 connection.commit()
                                                 # connection.close()
                                                 # continue
+                                                # print("Updated")
                                                 """If anything is written to database
                                                     set this flag to True"""
                                                 notify_flag = True
 
-                                                print("Mark room as posted...")
+                                                # print("Mark room as posted...")
                                                 fn_mark_room_posted(carthid,
                                                         adir_room,
                                                         adir_hallcode,
@@ -477,7 +480,7 @@ def main():
                                             else:
                                                 # print("No change needed in "
                                                 #        "stu_serv_rec")
-                                                print("Mark room as posted...")
+                                                # print("Mark room as posted...")
                                                 fn_mark_room_posted(carthid, adir_room,
                                                         adir_hallcode, term,
                                                         posted,
@@ -499,7 +502,7 @@ def main():
                                              ", Room assignment ID = "
                                              + str(roomassignmentid),
                                              "Adirondack Error")
-                            # go ahead and update
+                                # go ahead and update
                                 else:
                                     """As of 1/30/20, we have decided that it
                                         makes sense to insert a skeleton
@@ -519,7 +522,7 @@ def main():
                                     '''.format(carthid, sess, year, 'R', intendhsg,
                                                'MAIN', bldg, room, checkedindate,
                                                billcode)
-                                    print(q_create_stu_serv_rec)
+                                    # print(q_create_stu_serv_rec)
 
                                     connection = get_connection(EARL)
                                     with connection:
@@ -536,28 +539,30 @@ def main():
 
                         except Exception as e:
                             print("Error in process " + repr(e))
+                            # sqlstate = e.args[1]
+                            print(e.args)
                             fn_write_error("Error in room_assignments.py - file write: "
                                            + repr(e))
                             pass
-            #
-            #
-            #         """Notify Student Billing of changes """
-            #         # if run_mode == "auto":
-            #         #     if notify_flag:
-            #         #         # print("Notify Student accounts")
-            #         #         fn_notify(room_file, EARL)
-            #         # room_output.close()
-            #
-            #
-            #
+
+
+                """Notify Student Billing of changes """
+                if run_mode == "auto":
+                    if notify_flag:
+                        # print("Notify Student accounts")
+                        fn_notify(room_file, EARL)
+                room_output.close()
+
+
+
             except Exception as e:
                 print("Error in file write " + repr(e))
                 fn_write_error("Error in room_assignments.py - file write: "
                                + repr(e))
-                # fn_send_mail(settings.ADIRONDACK_TO_EMAIL,
-                #              settings.ADIRONDACK_FROM_EMAIL,
-                #              "Error in room_assignments.py - file write: "
-                #              + repr(e), "Adirondack Error")
+                fn_send_mail(settings.ADIRONDACK_TO_EMAIL,
+                             settings.ADIRONDACK_FROM_EMAIL,
+                             "Error in room_assignments.py - file write: "
+                             + repr(e), "Adirondack Error")
                 pass
         # # # Remove this after testing - only for testing when no
         # # # recent changes are found via the API

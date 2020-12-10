@@ -196,7 +196,7 @@ def main():
               + "&" + \
               "Posted=" + posted
               # + "&" \
-              # "STUDENTNUMBER=" + "1567093"
+              # "STUDENTNUMBER=" + "1542616"
         # + "&" \
         # "HallCode=" + 'TOWR'
 
@@ -365,7 +365,7 @@ def main():
                                 else:
                                     rsvstat = 'R'
 
-                                # print("write room output")
+                                print("write room output")
                                 csvwriter = csv.writer(room_output,
                                            quoting=csv.QUOTE_NONNUMERIC
                                            )
@@ -487,17 +487,29 @@ def main():
                                                         roomassignmentid,
                                                         API_server, key)
                                     else:
-                                        # print("Bill code not found")
+                                        # print("490 - Bill code not found")
+                                        # print(bldg)
+                                        # print(roomassignmentid)
+                                        # print(carthid)
+                                        # print(
+                                        #     "Error in room_assignments.py - "
+                                        #     "Bill code not found  ID = "
+                                        #     + str(carthid)
+                                        #     + ", Building = " + str(bldg) +
+                                        #     ", Room assignment ID = "
+                                        #     + str(roomassignmentid))
                                         fn_write_error(
                                             "Error in room_assignments.py - "
-                                            "Bill code not found  ID = " + carthid,
+                                            "Bill code not found  ID = "
+                                            + str(carthid)
                                             + ", Building = " + str(bldg) +
                                             ", Room assignment ID = "
                                             + str(roomassignmentid))
                                         fn_send_mail(settings.ADIRONDACK_TO_EMAIL,
                                                      settings.ADIRONDACK_FROM_EMAIL,
                                              "Error in room_assignments.py - "
-                                             "Bill code not found  ID = " + carthid,
+                                             "Bill code not found  ID = "
+                                             + str(carthid)
                                              + ", Building = " + str(bldg) +
                                              ", Room assignment ID = "
                                              + str(roomassignmentid),

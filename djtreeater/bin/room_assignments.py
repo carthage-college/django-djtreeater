@@ -194,9 +194,9 @@ def main():
               "TimeFrameNumericCode=" + session + "&" \
               +  "HALLCODE=" + hall \
               + "&" + \
-              "Posted=" + posted
-              # + "&" \
-              # "STUDENTNUMBER=" + "1542616"
+              "Posted=" + posted \
+              + "&" \
+              "STUDENTNUMBER=" + "1528645"
         # + "&" \
         # "HallCode=" + 'TOWR'
 
@@ -306,7 +306,7 @@ def main():
                                 year = i[9][-4:]
                                 term = i[9]
                                 # occupants = i[7]
-
+                                off_camp_rsv_apr = ''
                                 bldg = fn_fix_bldg(i[2])
                                 billcode = fn_get_bill_code(carthid,
                                         str(bldg),
@@ -346,6 +346,7 @@ def main():
                                                     - len(bldgname):]
                                 elif bldg == 'RMTE':
                                     intendhsg = 'C'
+                                    off_camp_rsv_apr = 'Y'
                                     room = i[4]
 
                                 elif bldg == 'UN':
@@ -394,7 +395,8 @@ def main():
                                       trim(room),
                                       no_per_room,
                                       add_date,
-                                      trim(bill_code), hous_wd_date
+                                      trim(bill_code), hous_wd_date,
+                                      offcampus_res_appr
                                       from stu_serv_rec
                                       where yr = {2}
                                       and sess  = "{1}"
@@ -423,7 +425,7 @@ def main():
                                         # print("Record found " + carthid)
 
                                         for row in ret:
-
+                                            print("Off campus = " + str(row[12]))
                                             if row[3] != rsvstat \
                                                     or row[4] != intendhsg \
                                                     or row[6] != bldg \
@@ -438,7 +440,8 @@ def main():
                                                     intend_hsg = ?, campus = ?,
                                                     bldg = ?, 
                                                     room = ?,
-                                                    bill_code = ?
+                                                    bill_code = ?,
+                                                    offcampus_res_appr = ?
                                                     where id = ? and sess = ? and
                                                     yr = ?'''
                                                 q_update_stuserv_args = (rsvstat,
@@ -447,6 +450,7 @@ def main():
                                                          bldg,
                                                          room,
                                                          billcode,
+                                                         off_camp_rsv_apr,
                                                          int(carthid),
                                                          sess,
                                                          int(year))
@@ -527,13 +531,13 @@ def main():
                                             stu_serv_rec
                                             (id, sess, yr, rsv_stat, intend_hsg,
                                             campus, bldg,  room, add_date,
-                                            bill_code)
+                                            bill_code, offcampus_res_appr)
                                         VALUES
                                             ({0},'{1}', {2}, '{3}', '{4}', '{5}',
-                                            '{6}', '{7}', '{8}','{9}')
+                                            '{6}', '{7}', '{8}','{9}', '{10}')
                                     '''.format(carthid, sess, year, 'R', intendhsg,
                                                'MAIN', bldg, room, checkedindate,
-                                               billcode)
+                                               billcode, off_camp_rsv_apr)
                                     # print(q_create_stu_serv_rec)
 
                                     connection = get_connection(EARL)

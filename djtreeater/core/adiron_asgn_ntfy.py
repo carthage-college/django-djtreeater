@@ -128,14 +128,15 @@ def fn_notify(file, EARL):
                                     + ", " + line[6] + " from " + lastbldg
                                     + " " + lastroom + " "
                                     + lastcode + ", " + lastroomtype
-                                    + " on " + line[10])
+                                    + " on " + line[10] + " for " + line[9])
                         else:
                             xtra_list.append("Student " + line[0]
                                     + ", " + fullname + " moved to " + line[2]
                                     + " " + line[4] + " " + line[23] + ", "
                                     + line[6] + " from " + lastbldg + " "
                                     + lastroom + " " + lastcode + ", "
-                                    + lastroomtype + " on " + line[10])
+                                    + lastroomtype + " on " + line[10]
+                                    + " for " + line[9])
                             # print(xtra_list)
 
                 elif line[0] != lastid:

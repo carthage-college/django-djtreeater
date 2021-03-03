@@ -398,17 +398,22 @@ FROM
                 ) DGR
                 ON     DGR.id = PER.ID  
         
-            LEFT JOIN 
-                (SELECT distinct sr.prog, sr.id, sr.subprog, 
+            LEFT JOIN
+                (SELECT distinct sr.prog, sr.id, sr.subprog, sr.sess,
                     sr.cum_gpa, sr.yr, sr.subprog, sr.earn_hrs, sr.cum_earn_hrs, 
-                    sr.reg_hrs
-                FROM stu_acad_rec sr, cursessyr_vw cv
-                WHERE sr.sess = cv.sess
-                AND sr.prog = cv.prog
-                AND sr.yr = cv.yr) SAR
-                  ON SAR.id = PER.id    
-                  AND SAR.prog = PER.prog       
-                    
+                    sr.reg_hrs, sess.beg_date
+                FROM stu_acad_rec sr  
+                JOIN (select yr, sess, max(beg_date) beg_date, prog
+                from acad_cal_rec where yr = YEAR(TODAY)
+                and end_date > TODAY
+                and beg_date < TODAY
+                group by yr, sess, prog) SESS
+                on SESS.yr = SR.yr
+                and SESS.sess = SR.sess
+                and SESS.prog = SR.prog) SAR
+                on SAR.id =  PER.id
+                and SAR.prog = PER.prog
+            
                 --Don't bother with ICE1 or ICE2, little data...
             LEFT JOIN
                 (SELECT id, line1, line2, line3, city, st, zip, ctry, phone 

@@ -114,6 +114,7 @@ def main():
     last_yr = ret[1]
     target_sess = ret[2]
     target_yr = ret[3]
+    target_yr = 2021
 
     """For Spring session, we need to collect info if it exists from the fall
         stu serv rec"""
@@ -125,7 +126,7 @@ def main():
     else:
         cur_ssr_sql = get_spring_to_fall(target_sess, target_yr)
 
-    print(cur_ssr_sql)
+    # print(cur_ssr_sql)
 
     connection = get_connection(EARL)
     """ connection closes when exiting the 'with' block """
@@ -149,10 +150,11 @@ def main():
             """Fall term is always a clean insert - no parking info, those 
                 will come later via ???"""
             if target_sess == 'RA':
+
                 print("clean insert - no need to use last term")
-                insSql = insert_ssr(carth_id, target_sess, target_yr, "UN", "000",
-                               "", "O", "R", EARL)
-                print(insSql)
+                insSql = insert_ssr(carth_id, target_sess, target_yr, "", "",
+                               "", "R", "R", EARL)
+                # print(insSql)
 
             else:
                 print("search previous term stu_serv_rec")

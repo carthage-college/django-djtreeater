@@ -111,7 +111,7 @@ def get_spring_to_fall(target_sess, target_yr):
     (SELECT id 
     FROM stu_serv_rec 
     WHERE sess = '{0}' AND yr = {1}) 
-   --limit 100
+   --limit 25
         '''.format(target_sess, target_yr)
 
     return SQL_SPRING_TO_FALL

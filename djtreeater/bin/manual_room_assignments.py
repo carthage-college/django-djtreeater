@@ -67,6 +67,7 @@ parser.add_argument(
 )
 
 
+# noinspection SqlDialectInspection
 def main():
     try:
         """
@@ -146,21 +147,17 @@ def main():
                            "Enter 0 for unposted, 1 for posted, "
                            "2 for changed, 0,2 for both: ")
             # print(hall)
-
-        elif run_mode == "auto":
-
-            """IT MAY BE BEST TO HARD CODE THE TERM SELECTIONS HERE
-               CAN'T JUST LOOK AHEAD, HAVE TO KEEP KIDS OUT UNTIL
-               A PREFERRED TIME
-            """
+            sess = (session[:2])
+            year = (session[3:7])
+            print(sess)
 
             q_get_terms = '''select sess, yr, beg_date, end_date
-                from acad_cal_rec 
-                where --yr = 2020 and 
-                sess in ("RA", "RC", "RE", "GA", "GC", "GE")
-                and subsess = ""
-                and (end_date > TODAY - 30
-                and beg_date < TODAY + 30)'''
+                     from acad_cal_rec 
+                     where yr = {1}
+                     and sess = '{0}'
+                     and subsess = ""
+                    '''.format(sess, year)
+            print(q_get_terms)
 
             connection = get_connection(EARL)
             # print(q_validate_stuserv_rec)
@@ -173,15 +170,9 @@ def main():
             ret = list(data_result)
 
             for row in ret:
-
                 i = row[0].strip() + ' ' + str(row[1])
-
                 # d2 = datetime.datetime(2020, 5, 20)
-
                 session = i
-                # session = row[0]
-                hall = ''
-                posted = '0,2'
                 # """IMPORTANT! won't work if string has any spaces. NO
                 # SPACES"""
 
@@ -192,7 +183,7 @@ def main():
                                                     "utcts=" + \
                       str(utcts) + "&" \
                                    "h=" + hash_object.hexdigest() + "&" \
-                                                                    "TimeFrameNumericCode=" + session + "&" \
+                                    "TimeFrameNumericCode=" + session + "&" \
                       + "HALLCODE=" + hall \
                       + "&" + \
                       "Posted=" + posted
@@ -221,8 +212,9 @@ def main():
                 'In theory, every room assignment in Adirondack should have
                 a bill code'''
 
-                # print("URL = " + url)
-                # print("______")
+                print("URL = " + url)
+                print("______")
+
 
                 try:
                     response = requests.get(url)
@@ -252,6 +244,8 @@ def main():
                     # print("No new data found")
                     pass
                 else:
+                    # print(url)
+                    pass
                     # print(x['DATA'])
                     room_file = settings.ADIRONDACK_TXT_OUTPUT + \
                                 settings.ADIRONDACK_ROOM_ASSIGNMENTS + '.csv'
@@ -515,28 +509,30 @@ def main():
                                                             True"""
                                                         notify_flag = True
 
-                                                        # print("Mark room
-                                                        # as posted...")
-                                                        fn_mark_room_posted(
-                                                            carthid,
-                                                            adir_room,
-                                                            adir_hallcode,
-                                                            term, posted,
-                                                            roomassignmentid,
-                                                            API_server, key)
+                                                        # print("Mark room as posted...")
+                                                        fn_mark_room_posted(carthid,
+                                                                adir_room,
+                                                                adir_hallcode,
+                                                                term, posted,
+                                                                roomassignmentid,
+                                                                API_server, key)
                                                     else:
+                                                        pass
                                                         # print("No change
                                                         # needed in "
                                                         #        "stu_serv_rec")
                                                         # print("Mark room
                                                         # as posted...")
-                                                        fn_mark_room_posted(
-                                                            carthid, adir_room,
-                                                            adir_hallcode,
-                                                            term,
-                                                            posted,
-                                                            roomassignmentid,
-                                                            API_server, key)
+                                                        # #
+                                                        # fn_mark_room_posted(carthid, adir_room,
+                                                        ##
+                                                        # adir_hallcode, term,
+                                                        ##         posted,
+                                                        ##
+                                                        # roomassignmentid,
+                                                        # #
+                                                        # API_server, key)
+
                                             else:
                                                 # print("490 - Bill code not
                                                 # found")
@@ -589,8 +585,7 @@ def main():
                                                 and deal with parking
                                                 logic
                                                 """
-                                            q_create_stu_serv_rec =
-                                            '''INSERT INTO
+                                            q_create_stu_serv_rec = '''INSERT INTO
                                                     stu_serv_rec
                                                     (id, sess, yr, rsv_stat, 
                                                     intend_hsg,

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ADIRONDACK_QUERY = '''
-SELECT  
+    SELECT  distinct
     TO_CHAR(IR.id) AS STUDENT_NUMBER, 
     TRIM(IR.firstname) AS FIRST_NAME, 
     TRIM(IR.middlename) AS MIDDLE_NAME, 
@@ -25,8 +25,9 @@ SELECT
         WHEN (CL.CL = 'JR') THEN 'Junior' 
         WHEN (CL.CL = 'SR') THEN 'Senior' 
         WHEN (CL.CL in ('GR', 'AT')) THEN 'Masters' 
-        WHEN (CL.CL IN ('ND', 'SP')) THEN ''   -- What do we do with students 
-            --not yet classified?  Can leave blank
+        WHEN (CL.CL IN ('ND', 'SP')) THEN '' 
+           -- What do we do with students 
+           --not yet classified?  Can leave blank
         ELSE '' 
         END AS CLASS_STATUS, 
     CL.CL as STUDENT_STATUS,   --Want FF, FN, PF, PN, UT here
@@ -145,49 +146,52 @@ SELECT
     --Custom fields
      PRO.race as RACECODE,
      SPORT.DESCR AS SPORT,
-     GREEK.ORG AS GREEK_LIFE
--- these will probably be manually populated 
---    '' as preferred_pronoun,
---    '' as Service_Emotional_Support_Animal,
-    
-FROM
+     GREEK.ORG AS GREEK_LIFE,
+     PER.hsg_type AS HOUSING_TYPE,
+     ZP.distance_to_carthage AS DISTANCE         
+    -- these will probably be manually populated 
+    --    '' as preferred_pronoun,
+    --    '' as Service_Emotional_Support_Animal,    
+
+    FROM
     (
-    select id, prog, subprog, major, pref_name, student, sess, yr, acst,
-    	cl, major1, plan_grad_yr, adm_sess, adm_yr, row_num from
+    SELECT distinct id, prog, subprog, major, pref_name, student, 
+        sess, yr, acst, cl, major1, plan_grad_yr, adm_sess, adm_yr, 
+        hsg_type, row_num 
+        FROM
         (
         
-        SELECT unique PV.id, PR.prog, PR.subprog, PR.major1 as major, 
-        	ADM.pref_name,
-            PV.student, TRM.sess, TRM.yr,
-            PR.acst, PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr,
-            
+        SELECT UNIQUE PV.id, PR.prog, PR.subprog, PR.major1 
+            AS major, ADM.pref_name, PV.student, TRM.sess, TRM.yr, PR.acst, 
+            PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr, 
+            ADM.hsg_type,
             row_number() over ( partition BY PR.id
             ORDER BY 
-                CASE when PR.prog = 'GRAD' then 1 
-                    when PR.prog = 'UNDG' then 2 
-                    when PR.prog = 'PRDV' then 3 
+                CASE WHEN PR.prog = 'GRAD' THEN 1 
+                    WHEN PR.prog = 'UNDG' THEN 2 
+                    WHEN PR.prog = 'PRDV' THEN 3 
                     WHEN PR.PROG = 'ACT' THEN 4 
-                    when PR.prog = 'PARA' then 5 
-                    else 9 end ) 
-                    as row_num 
-        from cc_provisioning_vw PV
+                    WHEN PR.prog = 'PARA' THEN 5 
+                    ELSE 9 END) 
+                    AS row_num 
+        FROM cc_provisioning_vw PV
         LEFT JOIN prog_enr_rec PR
                 ON PV.id = PR.id
         JOIN adm_rec ADM    ON    PR.id = ADM.id
             AND ADM.prog = PR.prog
             AND    ADM.primary_app    =    'Y'
             
-        JOIN (    select distinct id, sess, yr
-        from stu_serv_rec
-        where sess in ('RA','RC')
-            AND sess||YR in (select distinct sess||yr from acad_cal_rec 
-                where end_date > TODAY -1
-                and beg_date < TODAY + 30
-            and sess in ('RA','RC'))
-             
-            ) 
-            TRM ON TRM.id = PR.id 
-      
+        JOIN (SELECT distinct id, sess, yr
+            FROM stu_serv_rec
+            WHERE sess in ('RA','RC')
+            AND sess||YR in 
+                (SELECT distinct sess||yr 
+                FROM acad_cal_rec 
+                WHERE end_date > TODAY -1
+                AND beg_date < TODAY + 180
+                AND sess IN ('RA','RC'))
+            ) TRM 
+                ON TRM.id = PR.id 
         WHERE 
          (
             PV.student IN ('prog', 'stu', 'reg_clear')
@@ -198,26 +202,41 @@ FROM
             AND (PR.lv_date IS NULL)
             AND (PR.prog != 'GRAD')
             AND (PR.deg_grant_date IS NULL)
+            --TEMPORARY
+           --       AND (PR.cl in ("FF", "FR", "FN"))
             )
             
          ---TLE   
-         UNION
-          
-         SELECT unique PV.id, PR.prog, PR.subprog, PR.major1 as major, 
-            ADM.pref_name,
-            PV.student, TRM.sess, TRM.yr, 
-            PR.acst, PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr,
+    UNION
+         
+         
+        SELECT unique PV.id, ADM.prog, ADM.subprog , ADM.major as major, 
+            ADM.pref_name, PV.student,
+            CASE 
+                WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
+                THEN ADM.plan_enr_sess   
+                ELSE TRM.sess
+            END as TERM,                 
+            CASE 
+                WHEN TRM.yr is null 
+                THEN ADM.plan_enr_yr   
+                ELSE TRM.yr
+            END as YR,          
+            PR.acst, PR.cl, PR.major1, 
+            PR.plan_grad_yr,
+            PR.adm_sess,
+            ADM.plan_enr_yr, ADM.hsg_type,
             row_number() over ( partition BY PR.id
             ORDER BY 
-                CASE when TRM.sess in ('GA', 'GC') then 1 
-                    when TRM.sess in ('GE')  then 2 
+                CASE when ADM.plan_enr_sess in ('GA', 'GC') then 1 
+                    when ADM.plan_enr_sess in ('GE')  then 2 
                     else 3 end ) 
                     as row_num  
-        from cc_provisioning_vw PV
-        JOIN prog_enr_rec PR
-                ON PV.id = PR.id
-                and PR.acst != 'PAST'
-                and PR.tle = 'Y'
+        FROM cc_provisioning_vw PV
+        LEFT JOIN prog_enr_rec PR
+            ON PV.id = PR.id
+            AND PR.acst != 'PAST'
+            AND PR.tle = 'Y'
         JOIN adm_rec ADM    ON    PR.id = ADM.id
             AND ADM.prog = PR.prog
             AND    ADM.primary_app    =    'Y'
@@ -225,17 +244,20 @@ FROM
             --How to deal with the term - TLEs not in RA or RC
             --Not in stu_serv_re
             --Do we need GA, GC, GE and GB???
-           JOIN (    select distinct id, sess, yr
-        from stu_acad_rec
-        where sess in ('GA', 'GC', 'GE')
-    --        where sess in ('RA','RC', 'GA', 'GC', 'GE')
-            AND sess||YR in (select distinct sess||yr from acad_cal_rec 
-                where end_date > TODAY -1
-                and beg_date < TODAY + 30
-            and sess in ('GA', 'GC','GE'))
-            ) TRM ON TRM.id = PV.id  
+        
+        LEFT JOIN (SELECT distinct id, sess, yr
+            FROM stu_acad_rec
+            WHERE sess in ('GA', 'GC', 'GE')
+            AND sess||YR in 
+                (SELECT distinct sess||yr 
+                FROM acad_cal_rec 
+                WHERE end_date > TODAY -1
+                AND beg_date < TODAY + 180
+                AND sess in ('GA', 'GC', 'GE'))
+                ) 
+                TRM ON TRM.id = PR.id  
         WHERE 
-         (
+           (
             PV.student IN ('prog', 'stu', 'reg_clear')
             AND PR.acst IN ('GOOD' ,'LOC' ,'PROB' ,'PROC' , 'PROR' ,'READ' ,
             'RP','SAB','SHAC' ,'SHOC', 'GRAD', 'ACPR')
@@ -244,40 +266,56 @@ FROM
             AND (PR.lv_date IS NULL)
             AND (PR.deg_grant_date IS NULL)
             )
-            
+                                 
          UNION
+        
          --TO add grad students to Adirondack
-            --Original query depends on students being in the stu_serv_rec
-            --THAT MAY NOT BE NECESSARY IF PYTHON CODE PUTS THEM THERE...
-            
-            SELECT unique PV.id, PR.prog, PR.subprog, PR.major1 as major,   	ADM.pref_name,
-            PV.student, TRM.sess, TRM.yr, 
-            PR.acst, PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr,
+        SELECT UNIQUE PV.id, PR.prog, PR.subprog, PR.major1 AS major, 
+            ADM.pref_name, PV.student, 
+            CASE 
+                WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
+                THEN ADM.plan_enr_sess   
+                ELSE TRM.sess
+            END AS TERM,                 
+            CASE 
+                WHEN TRM.yr is null 
+                THEN ADM.plan_enr_yr   
+                ELSE TRM.yr
+            END as YR,                 
+            PR.acst, PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, 
+            PR.adm_yr, ADM.hsg_type, 
             row_number() over ( partition BY PR.id
             ORDER BY 
-                CASE when TRM.sess in ('GA', 'GC') then 1 
-                    when TRM.sess in ('GE')  then 2 
-                    else 3 end ) 
-                    as row_num  
-                   
-            from cc_provisioning_vw PV
+                CASE WHEN TRM.sess in ('GA', 'GC') THEN 1 
+                    WHEN TRM.sess in ('GE') THEN 2 
+                    ELSE 3 
+                    END ) 
+                    AS row_num  
+            FROM cc_provisioning_vw PV
             LEFT JOIN prog_enr_rec PR
                     ON PV.id = PR.id
-            JOIN adm_rec ADM    ON    PR.id = ADM.id
+                    AND PR.prog = 'GRAD'
+            JOIN adm_rec ADM 
+                ON PR.id = ADM.id
                 AND ADM.prog = PR.prog
                 AND    ADM.primary_app    =    'Y'
-            
+                AND ADM.plan_enr_sess in ('GA', 'GC','GE')
+                AND (PR.plan_grad_yr >= YEAR(TODAY) or
+                PR.plan_grad_yr = 0)
+
             --How to deal with the term - Grads not in RA or RC
             --Not in stu_serv_rec
             --Do we need GA, GC, GE and GB???
         
-             JOIN (    select distinct id, sess, yr
-            from stu_acad_rec
-            where sess in ('GA', 'GC', 'GE')
-                AND sess||YR in (select distinct sess||yr from acad_cal_rec 
+            LEFT JOIN (    select distinct id, sess, yr
+            FROM stu_acad_rec
+            WHERE sess in ('GA', 'GC', 'GE')
+                AND sess||YR in 
+                (SELECT distinct sess||yr 
+                    FROM acad_cal_rec 
                     where end_date > TODAY -1
-                    and beg_date < TODAY + 30
-                and sess in ('GA', 'GC', 'GE'))
+                    AND beg_date < TODAY + 180
+                    AND sess in ('GA', 'GC', 'GE'))
                 ) 
                 TRM ON TRM.id = PR.id  
                 
@@ -287,142 +325,140 @@ FROM
                 AND PR.acst IN ('GOOD' ,'LOC' ,'PROB' ,'PROC' , 'PROR' ,'READ' ,
                 'RP','SAB','SHAC' ,'SHOC', 'GRAD', 'ACPR')
                 AND (PR.subprog NOT IN ('KUSD', 'UWPK', 'YOP', 'ENRM'))
-                and (PR.prog != 'UNDG')
+                AND (PR.prog != 'UNDG')
                 AND (PR.CL != 'UP')
-               AND (PR.lv_date IS NULL)
+               	AND (PR.lv_date IS NULL)
                 --AND (PR.deg_grant_date IS NULL)
                 )
-             
-         UNION 
+                
+        UNION 
     
           --Incoming Students
-             SELECT unique PV.id, PV.program, '' subprog, '' major, 
-                    ADM.pref_name,
-                    PV.student, ADM.plan_enr_sess sess, ADM.plan_enr_yr yr,
-                    '' acst, ADM.cl, '' major1,  
-                    NULL::SMALLINT plan_grad_yr, '' adm_sess, 
-                    NULL::SMALLINT adm_yr, 1 row_num
-             FROM provisioning_vw PV
-             LEFT JOIN adm_rec ADM    ON    PV.id = ADM.id
-                AND    ADM.primary_app    =    'Y'
+        SELECT unique PV.id, PV.program, '' subprog, '' major, 
+            ADM.pref_name, PV.student, ADM.plan_enr_sess sess, 
+            ADM.plan_enr_yr yr, '' acst, ADM.cl, '' major1,  
+            NULL::SMALLINT plan_grad_yr, '' adm_sess, 
+            NULL::SMALLINT adm_yr, ADM.hsg_type, 1 row_num
+        FROM provisioning_vw PV
+        LEFT JOIN adm_rec ADM    ON    PV.id = ADM.id
+             AND    ADM.primary_app    =    'Y'
              WHERE PV.student = 'incoming'    
              and ADM.plan_enr_sess in ('RA', 'RC', 'GA', 'GC', 'GE')
             --UNION
         
-                  ) rnk_prog
+            ) rnk_prog
             WHERE row_num = 1 
-            ) PER
+         ) PER
         
-            INNER JOIN id_rec IR ON    PER.id            =    IR.id
-                
-            LEFT JOIN 
-                (  SELECT a1.id id1, a1.line1 eml1, a2.id id2, a2.eml2
-                   FROM aa_rec a1
-                   LEFT JOIN
-                      (
-                        SELECT id, aa, line1 eml2, beg_date, end_date 
-                        FROM aa_rec 
-                        WHERE aa = 'EML2'            
-                        AND  beg_date < TODAY
-                        AND NVL(end_date, TODAY) >= TODAY     
-                      ) a2 
-                    ON a2.id = a1.id 
-                  WHERE 
-                      (
-                        a1.aa = 'EML1'
-                        AND    a1.beg_date < TODAY
-                        AND NVL(a1.end_date, TODAY) >= TODAY
-                      )
-                ) EML on EML.id1 = PER.id 
+        INNER JOIN id_rec IR ON    PER.id            =    IR.id
+        LEFT JOIN zip_table ZP ON IR.zip = ZP.zip    
         
-        
-            LEFT JOIN
-                (SELECT id, line1, line2, line3, city, st, zip, ctry, phone 
-                FROM aa_rec
-                WHERE aa = 'LOC' 
-                AND (end_date IS NULL OR end_date >= TODAY)) LOC
-                ON LOC.id = PER.id
-        
-            LEFT JOIN        (
-                SELECT id.id,
-                        replace(replace(replace(replace(replace(replace(replace(
-                        multiset(      
-                    SELECT DISTINCT trim(a) from 
-                        (SELECT invl_table.txt a 
-                        FROM involve_rec 
-                          JOIN invl_table 
-                        ON invl_table.invl=involve_rec.invl 
-                        WHERE id=id.id 
-                        AND invl_table.sanc_sport = 'Y' 
-                        --Check this.  Do we need to use the term dates?
-                        and involve_rec.end_date > TODAY
-                        ORDER BY invl_table.txt)
-                        )::lvarchar,'MULTISET{'), 'ROW'), '}'),"')",''), 
-                        "('",''), ',',';'), "''","'")
-                        DESCR
-                    FROM id_rec id    
-                    ) SPORT ON SPORT.id = PER.id         
-        
-             LEFT JOIN (
-                        select distinct id, org from involve_rec 
-                    where ctgry = 'GREEK'
-                    and beg_date > TODAY - 180
-                    and (end_date > TODAY or end_date is null)
-                    ) GREEK 
-                    on GREEK.id = PER.id  
-        
-            INNER JOIN    cvid_rec CV    ON    PER.id = CV.cx_id
-            INNER JOIN    cl_table CL    ON    PER.cl = CL.cl
-            LEFT JOIN major_table MAJ1    ON    PER.major1 = MAJ1.major
-            INNER JOIN    profile_rec    PRO    ON    PER.id = PRO.id
-            LEFT JOIN 
-                (SELECT a.id ID, a.aa aa, a.line1 line1, 
-                    a.phone phone, a.beg_date beg_date
-                FROM aa_rec a
-                INNER JOIN 
-                    (
-                    SELECT id, MAX(beg_date) beg_date
+        LEFT JOIN 
+            (  SELECT a1.id id1, a1.line1 eml1, a2.id id2, a2.eml2
+                FROM aa_rec a1
+                LEFT JOIN
+                (
+                    SELECT id, aa, line1 eml2, beg_date, end_date 
                     FROM aa_rec 
-                    WHERE aa = 'CELL'
-                    GROUP BY id
-                    ) b 
-                    ON a.id = b.id AND a.beg_date = b.beg_date
-                    AND a.aa = 'CELL'
-                ) CELL
-                ON CELL.ID = PER.ID     
-            
-            LEFT JOIN 
-                (SELECT id, gpa, mflag
-                FROM degaudgpa_rec
-                WHERE mflag = 'MAJOR1' AND gpa > 0
-                ) DGR
-                ON     DGR.id = PER.ID  
+                    WHERE aa = 'EML2'            
+                    AND  beg_date < TODAY
+                    AND NVL(end_date, TODAY) >= TODAY     
+                    ) a2 
+                ON a2.id = a1.id 
+               WHERE 
+                   (
+                    a1.aa = 'EML1'
+                    AND    a1.beg_date < TODAY
+                    AND NVL(a1.end_date, TODAY) >= TODAY
+                   )
+           ) EML on EML.id1 = PER.id 
+    
+    
+        LEFT JOIN
+            (SELECT id, line1, line2, line3, city, st, zip, ctry, phone 
+            FROM aa_rec
+            WHERE aa = 'LOC' 
+            AND (end_date IS NULL OR end_date >= TODAY)) LOC
+            ON LOC.id = PER.id
+    
+        LEFT JOIN        (
+            SELECT id.id,
+                    replace(replace(replace(replace(replace(replace(replace(
+                    multiset(      
+                SELECT DISTINCT trim(a) from 
+                    (SELECT invl_table.txt a 
+                    FROM involve_rec 
+                      JOIN invl_table 
+                    ON invl_table.invl=involve_rec.invl 
+                    WHERE id=id.id 
+                    AND invl_table.sanc_sport = 'Y' 
+                    --Check this.  Do we need to use the term dates?
+                    and involve_rec.end_date > TODAY
+                    ORDER BY invl_table.txt)
+                    )::lvarchar,'MULTISET{'), 'ROW'), '}'),"')",''), 
+                    "('",''), ',',';'), "''","'")
+                    DESCR
+                FROM id_rec id    
+                ) SPORT ON SPORT.id = PER.id         
+    
+         LEFT JOIN (
+                    select distinct id, org from involve_rec 
+                where ctgry = 'GREEK'
+                and beg_date > TODAY - 180
+                and (end_date > TODAY or end_date is null)
+                ) GREEK 
+                on GREEK.id = PER.id  
+    
+        INNER JOIN    cvid_rec CV    ON    PER.id = CV.cx_id
+        INNER JOIN    cl_table CL    ON    PER.cl = CL.cl
+        LEFT JOIN major_table MAJ1    ON    PER.major1 = MAJ1.major
+        INNER JOIN    profile_rec    PRO    ON    PER.id = PRO.id
+        LEFT JOIN 
+            (SELECT a.id ID, a.aa aa, a.line1 line1, 
+                a.phone phone, a.beg_date beg_date
+            FROM aa_rec a
+            INNER JOIN 
+                (
+                SELECT id, MAX(beg_date) beg_date
+                FROM aa_rec 
+                WHERE aa = 'CELL'
+                GROUP BY id
+                ) b 
+                ON a.id = b.id AND a.beg_date = b.beg_date
+                AND a.aa = 'CELL'
+            ) CELL
+            ON CELL.ID = PER.ID     
         
-            LEFT JOIN
-                (SELECT distinct sr.prog, sr.id, sr.subprog, sr.sess,
-                    sr.cum_gpa, sr.yr, sr.subprog, sr.earn_hrs, sr.cum_earn_hrs, 
-                    sr.reg_hrs, sess.beg_date
-                FROM stu_acad_rec sr  
-                JOIN (select yr, sess, max(beg_date) beg_date, prog
-                from acad_cal_rec where yr = YEAR(TODAY)
-                and end_date > TODAY
-                and beg_date < TODAY
-                group by yr, sess, prog) SESS
-                on SESS.yr = SR.yr
-                and SESS.sess = SR.sess
-                and SESS.prog = SR.prog) SAR
-                on SAR.id =  PER.id
-                and SAR.prog = PER.prog
-            
-                --Don't bother with ICE1 or ICE2, little data...
-            LEFT JOIN
-                (SELECT id, line1, line2, line3, city, st, zip, ctry, phone 
-                FROM aa_rec
-                WHERE aa = 'ICE' 
-                AND (end_date IS NULL OR end_date >= TODAY)) EMER
-                ON EMER.id = PER.id
-        --2843
-        --2826
+        LEFT JOIN 
+            (SELECT id, gpa, mflag
+            FROM degaudgpa_rec
+            WHERE mflag = 'MAJOR1' AND gpa > 0
+            ) DGR
+            ON     DGR.id = PER.ID  
+    
+        LEFT JOIN
+            (SELECT distinct sr.prog, sr.id, sr.subprog, sr.sess,
+                sr.cum_gpa, sr.yr, sr.subprog, sr.earn_hrs, sr.cum_earn_hrs, 
+                sr.reg_hrs, sess.beg_date
+            FROM stu_acad_rec sr  
+            JOIN (select yr, sess, max(beg_date) beg_date, prog
+            from acad_cal_rec where yr = YEAR(TODAY)
+            and end_date > TODAY
+            and beg_date < TODAY
+            group by yr, sess, prog) SESS
+            on SESS.yr = SR.yr
+            and SESS.sess = SR.sess
+            and SESS.prog = SR.prog) SAR
+            on SAR.id =  PER.id
+            and SAR.prog = PER.prog
+        
+            --Don't bother with ICE1 or ICE2, little data...
+        LEFT JOIN
+            (SELECT id, line1, line2, line3, city, st, zip, ctry, phone 
+            FROM aa_rec
+            WHERE aa = 'ICE' 
+            AND (end_date IS NULL OR end_date >= TODAY)) EMER
+            ON EMER.id = PER.id
 '''
 
 Q_GET_TERM = '''select distinct 

@@ -28,6 +28,7 @@ from djtreeater.core.utilities import fn_write_error, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
     fn_mark_room_posted, fn_translate_bldg_for_adirondack, fn_send_mail
 from djtreeater.core.adiron_asgn_ntfy import fn_notify
+from djtreeater.core.lookuplist import fn_lookuplist
 from djimix.core.utils import get_connection, xsql
 
 # informix environment
@@ -153,33 +154,14 @@ def main():
                CAN'T JUST LOOK AHEAD, HAVE TO KEEP KIDS OUT UNTIL
                A PREFERRED TIME
             """
+            termlist = fn_lookuplist(test)
+            # print("From THD Export Date")
 
-            q_get_terms = '''select sess, yr, beg_date, end_date
-                from acad_cal_rec 
-                where --yr = 2020 and 
-                sess in ("RA", "RC", "RE", "GA", "GC", "GE")
-                and subsess = ""
-                and (end_date > TODAY - 30
-                and beg_date < TODAY + 30)'''
-
-            connection = get_connection(EARL)
-            # print(q_validate_stuserv_rec)
-            """ connection closes when exiting the 'with' block """
-            with connection:
-                data_result = xsql(
-                    q_get_terms, connection,
-                    key=settings.INFORMIX_DEBUG
-                ).fetchall()
-            ret = list(data_result)
-
-            for row in ret:
-
-                i = row[0].strip() + ' ' + str(row[1])
-
-                # d2 = datetime.datetime(2020, 5, 20)
-
-                session = i
-                # session = row[0]
+            '''Revision October 2021, get terms based on the export date
+                set in THD by the housing director'''
+            # print(termlist)
+            for row in termlist:
+                session = row
                 hall = ''
                 posted = '0,2'
                 # """IMPORTANT! won't work if string has any spaces. NO
@@ -192,12 +174,12 @@ def main():
                                                     "utcts=" + \
                       str(utcts) + "&" \
                                    "h=" + hash_object.hexdigest() + "&" \
-                                                                    "TimeFrameNumericCode=" + session + "&" \
+                                   "TimeFrameNumericCode=" + session + "&" \
                       + "HALLCODE=" + hall \
                       + "&" + \
                       "Posted=" + posted
                 # + "&" \
-                # "STUDENTNUMBER=" + "1501628"
+                # "STUDENTNUMBER=" + "1606822"
                 # + "&" \
                 # "HallCode=" + 'TOWR'
 
@@ -435,6 +417,7 @@ def main():
                                         ret = list(data_result)
 
                                         if len(ret) != 0:
+
                                             # if ret is not None:
                                             # print("Stu Serv Rec Found")
                                             if billcode:
@@ -456,8 +439,7 @@ def main():
                                                         4] != intendhsg \
                                                             or row[6] != bldg \
                                                             or row[7] != room \
-                                                            or row[
-                                                        10] != billcode:
+                                                            or row[10] != billcode:
 
                                                         # print("Need to
                                                         # update stu_serv_rec")
@@ -525,9 +507,7 @@ def main():
                                                             roomassignmentid,
                                                             API_server, key)
                                                     else:
-                                                        # print("No change
-                                                        # needed in "
-                                                        #        "stu_serv_rec")
+                                                        print("No change needed in stu_serv_rec")
                                                         # print("Mark room
                                                         # as posted...")
                                                         fn_mark_room_posted(
@@ -538,8 +518,7 @@ def main():
                                                             roomassignmentid,
                                                             API_server, key)
                                             else:
-                                                # print("490 - Bill code not
-                                                # found")
+                                                print("490 - Bill code not found")
                                                 # print(bldg)
                                                 # print(roomassignmentid)
                                                 # print(carthid)
@@ -589,9 +568,8 @@ def main():
                                                 and deal with parking
                                                 logic
                                                 """
-                                            q_create_stu_serv_rec =
-                                            '''INSERT INTO
-                                                    stu_serv_rec
+                                            q_create_stu_serv_rec = '''INSERT 
+                                                    INTO stu_serv_rec
                                                     (id, sess, yr, rsv_stat, 
                                                     intend_hsg,
                                                     campus, bldg,  room, 

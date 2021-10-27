@@ -132,7 +132,7 @@ def main():
         # for row in ret:
         for row in termlist:
             # i = row[0].strip() + ' ' + str(row[1])
-            print(row)
+            # print(row)
             adirondack_term = row
             # adirondack_term = i
             """Get data from Adirondack"""
@@ -154,7 +154,7 @@ def main():
             ExportCharges: if -1 then charges will be marked as exported
             DO NOT mark exported here.  Wait for later step
             """
-            print("URL = " + url)
+            # print("URL = " + url)
 
             response = requests.get(url)
             x = json.loads(response.content)
@@ -250,7 +250,7 @@ def main():
                         pass
                         # print("Item is not in CX database")
                     else:
-                        print("WARNING:  Matching item exist in CX database")
+                        # print("WARNING:  Matching item exist in CX database")
                         continue
 
                     """Make sure item was not pulled previously"""

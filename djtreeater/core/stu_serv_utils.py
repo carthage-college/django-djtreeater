@@ -1,33 +1,30 @@
+from datetime import datetime
 
 def fn_set_term_vars():
-    # this_yr = datetime.now().year
-    # this_month = datetime.now().month
+    this_month = datetime.now().month
 
-    this_yr = 2020
-    this_month = 5
+    '''Set false variable for testing'''
+    # this_month = 10
 
     # print("Current Month = " + str(this_month))
-    # print("Current Year = " + str(this_yr))
 
-    if this_month > 10 or this_month < 4:
-        target_sess = 'RC'
-        last_sess = 'RA'
+    '''for fall term we only write the shell
+    for spring term we are passing fall data to spring
+    so we can't pass fall data to spring until it exists and is stable
+    Fall to Spring should not happen til October or maybe November
+    Spring to fall must be running by April 30
+    All other time periods will only write the shell'''
+    if this_month > 9:
+        look_ahead = 'Fall to Spring'
+        days = 90
+    elif this_month < 5:
+        look_ahead = 'Spring to Fall'
+        days = 180
     else:
-        target_sess = 'RA'
-        last_sess = 'RC'
+        look_ahead = ''
+        days = 0
+    # print(days)
+    return [days, look_ahead]
 
-    if this_month > 11:
-        target_yr = str(this_yr + 1)
-        last_yr = str(this_yr)
-    elif this_month < 4:
-        target_yr = str(this_yr)
-        last_yr = str(this_yr - 1)
-    else:
-        target_yr = str(this_yr)
-        last_yr = str(this_yr)
 
-    print("Target Year = " + target_yr)
-    print("Target Sess = " + target_sess)
-    #
-    # print(last_sess)
-    return [last_sess, last_yr, target_sess, target_yr]
+

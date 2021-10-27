@@ -1,11 +1,23 @@
+# -*- coding: utf-8 -*-
 import os
 import csv
 import json
 import calendar
 import time
+import sys
+import time
 import datetime
+# import datetime as dt
+# from datetime import datetime, date
+import codecs
+import hashlib
+import argparse
+import django
+import string
+
+#
 # from datetime import datetime
-from datetime import date
+# from datetime import date
 import requests
 import codecs
 import hashlib
@@ -13,6 +25,9 @@ from time import strftime, strptime
 import smtplib
 import logging
 from logging.handlers import SMTPHandler
+
+
+
 
 # django settings for shell environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djtreeater.settings.shell")
@@ -629,3 +644,112 @@ def fn_set_grad_terms():
     print([last_term, current_term, current_term_gr, last_term_gr])
     return [last_term, current_term, current_term_gr, last_term_gr]
 
+
+def fn_lookup_terms(API_server, API_key):
+    print(API_server)
+    try:
+        utcts = fn_get_utcts()
+        print(utcts)
+
+        hashstring = str(utcts) + API_key
+
+        # Assumes the default UTF-8
+        hash_object = hashlib.md5(hashstring.encode())
+
+        url = "https://carthage.datacenter.adirondacksolutions.com/" \
+              + API_server + "/apis/thd_api.cfc?" \
+                             "method=LookUpList&" \
+                             "Key=" + API_key \
+              + "&" + "utcts=" + str(utcts) \
+              + "&" + "h=" + hash_object.hexdigest() \
+              + "&" + "TableList=TimeFrame"
+        # print("URL = " + url)
+
+        response = requests.get(url)
+        x = json.loads(response.content)
+
+        termlist = []
+        # print(x['DATA'])
+
+        tday = datetime.datetime.now().strftime("%B, %d %Y %H:%M:%S")
+        print(tday)
+        # thisday = datetime.datetime.strftime(tday, "%B, %d %Y %H:%M:%S")
+        # thisday = datetime.strptime(tday, "%B, %d %Y %H:%M:%S")
+        # print(thisday)
+
+        for i in x['DATA']:
+            # print(i[1])
+            startdate = i[1]
+            enddate = i[2]
+            exportdate = i[4]
+            termcode = i[3]
+            # startdate = datetime.strftime(i[1], "%B, %d %Y %H:%M:%S")
+            # print(startdate)
+            # enddate = datetime.strptime(i[2], "%B, %d %Y %H:%M:%S")
+            # exportdate = datetime.strptime(i[4], "%B, %d %Y %H:%M:%S")
+            # termcode = i[3]
+            # print("Term = " + i[0])
+            print("Export date = " + str(exportdate))
+            print("Today =  " + tday)
+            # print("Start date = " + str(startdate))
+            # print("End date = " + str(enddate))
+
+            if exportdate is not None and termcode is not None:
+                if exportdate < tday and enddate > tday:
+                    print(str(exportdate) + ', ' + termcode)
+
+    except Exception as e:
+        fn_write_error("Error in utilities.py- fn_lookup_terms: "
+                       + repr(e))
+
+
+
+def fn_lookup_accounts(api_server, api_key):
+    try:
+        utcts = fn_get_utcts()
+        hashstring = str(utcts) + api_key
+        hash_object = hashlib.md5(hashstring.encode())
+        # print(dateparam)
+
+        '''Cannot pass in a timeframenumericcode at present,but can return 
+              them.  May be the method to get all, filter by date and build a list
+              based on end date > current date.  Can then use that list in other
+              python scripts to determine what to bring back'''
+
+        url = "https://carthage.datacenter.adirondacksolutions.com/" \
+              + api_server + "/apis/thd_api.cfc?" \
+                             "method=LookUpList&" \
+                             "Key=" + api_key \
+              + "&" + "utcts=" + str(utcts) \
+              + "&" + "h=" + hash_object.hexdigest() \
+              + "&" + "TableList=Account"
+        print("URL = " + url)
+
+        response = requests.get(url)
+        x = json.loads(response.content)
+        # print(x)
+
+        billcodelist = []
+        print(x['DATA'])
+
+        for i in x['DATA']:
+            print(i[0] + ', ' + i[1])
+            if i[0] is not none:
+                billcodelist.append(
+                    "(" + termcode + ', ' + str(exportdate) + ")")
+                termlist.append(termcode)
+                # print('-----')
+                # print("Term = " + i[0])
+                # print("Start date = " + str(startdate))
+                # print("End date = " + str(enddate))
+                # print("Export date = " + str(exportdate))
+            else:
+                pass
+                # print("nada")
+        # print(termlist)
+        return termlist
+
+
+    except Exception as e:
+        fn_write_error("Error in utilities.py- fn_mark_bill_exported: "
+                       + e.message)

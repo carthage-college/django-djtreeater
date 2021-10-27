@@ -117,7 +117,6 @@ def main():
             exit(-1)
         # --------------------------
         # Create the txt file
-
         # print(ADIRONDACK_QUERY)
         connection = get_connection(EARL)
         # connection closes when exiting the 'with' block
@@ -149,8 +148,10 @@ def main():
                     csvWriter.writerow(row)
             file_out.close()
 
-            # send file to SFTP Site..
-            sftp_upload(adirondackdata)
+            if not test:
+                print("Send to FTP")
+                # send file to SFTP Site..
+                sftp_upload(adirondackdata)
 
         if test:
             SUBJECT = "[Adirondack] Student Bio data success"

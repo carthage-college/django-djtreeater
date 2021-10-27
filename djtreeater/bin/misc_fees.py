@@ -30,6 +30,7 @@ from djtreeater.core.utilities import fn_write_error, \
     fn_mark_room_posted, fn_translate_bldg_for_adirondack, \
     fn_mark_bill_exported, fn_set_terms, fn_check_cx_records, \
     fn_sendmailfees, fn_set_grad_terms, fn_sendmailfees_all_trms
+from djtreeater.core.lookuplist import fn_lookuplist
 
 from djimix.core.utils import get_connection, xsql
 
@@ -107,27 +108,15 @@ def main():
         # Adirondack dataset
         bill_list = []
 
-        q_get_terms = '''select sess, yr, beg_date, end_date
-            from acad_cal_rec 
-            where --yr = 2020 and 
-            sess in ("RA", "RC", "RE", "GA", "GC", "GE")
-            and subsess = ""
-            and (end_date > TODAY
-            and beg_date < TODAY)'''
+      
+        termlist = fn_lookuplist(test)
+        # print("From THD Export Date")
+        # print(termlist)
 
-        connection = get_connection(EARL)
-        # print(q_validate_stuserv_rec)
-        """ connection closes when exiting the 'with' block """
-        with connection:
-            data_result = xsql(
-                q_get_terms, connection,
-                key=settings.INFORMIX_DEBUG
-            ).fetchall()
-        ret = list(data_result)
+        if termlist:
 
-        if ret:
             """
-                          Cleanup previous run CSV files
+                        Cleanup previous run CSV files
                           """
             files = os.listdir(settings.ADIRONDACK_TXT_OUTPUT)
             for f in files:
@@ -140,10 +129,12 @@ def main():
                                 f[:ext] + "_" + timestr + f[ext:])
 
 
-        for row in ret:
-            i = row[0].strip() + ' ' + str(row[1])
-
-            adirondack_term = i
+        # for row in ret:
+        for row in termlist:
+            # i = row[0].strip() + ' ' + str(row[1])
+            print(row)
+            adirondack_term = row
+            # adirondack_term = i
             """Get data from Adirondack"""
 
             url = "https://carthage.datacenter.adirondacksolutions.com/" \
@@ -163,7 +154,7 @@ def main():
             ExportCharges: if -1 then charges will be marked as exported
             DO NOT mark exported here.  Wait for later step
             """
-            # print("URL = " + url)
+            print("URL = " + url)
 
             response = requests.get(url)
             x = json.loads(response.content)

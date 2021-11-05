@@ -151,7 +151,7 @@ def main():
             if not test:
                 print("Send to FTP")
                 # send file to SFTP Site..
-                sftp_upload(adirondackdata)
+                # sftp_upload(adirondackdata)
 
         if test:
             SUBJECT = "[Adirondack] Student Bio data success"

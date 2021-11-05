@@ -252,8 +252,9 @@ def main():
                         fn_write_assignment_header(room_file)
                         with open(room_file, 'a') as room_output:
                             for i in room_data:
-                                try:
 
+                                try:
+                                    # print(i)
                                     if i[0] is None:
                                         # print("No ID")
                                         pass

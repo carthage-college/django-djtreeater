@@ -723,33 +723,28 @@ def fn_lookup_accounts(api_server, api_key):
               + "&" + "utcts=" + str(utcts) \
               + "&" + "h=" + hash_object.hexdigest() \
               + "&" + "TableList=Account"
-        print("URL = " + url)
+        # print("URL = " + url)
 
         response = requests.get(url)
         x = json.loads(response.content)
         # print(x)
-
         billcodelist = []
-        print(x['DATA'])
 
+        # print(x['DATA'])
+
+        excludelist = ['2010', '2011', '2031', '2040']
         for i in x['DATA']:
-            print(i[0] + ', ' + i[1])
-            if i[0] is not none:
-                billcodelist.append(
-                    "(" + termcode + ', ' + str(exportdate) + ")")
-                termlist.append(termcode)
-                # print('-----')
-                # print("Term = " + i[0])
-                # print("Start date = " + str(startdate))
-                # print("End date = " + str(enddate))
-                # print("Export date = " + str(exportdate))
+            # print(i[0])
+            if i[0] not in excludelist:
+                billcodelist.append(i[0])
             else:
                 pass
                 # print("nada")
-        # print(termlist)
-        return termlist
-
+        # print(billcodelist)
+        return billcodelist
 
     except Exception as e:
-        fn_write_error("Error in utilities.py- fn_mark_bill_exported: "
-                       + e.message)
+        print("Error in utilities.py- fn_lookup_accounts: "
+                       + repr(e))
+        fn_write_error("Error in utilities.py- fn_lookup_accounts: "
+                       + repr(e))

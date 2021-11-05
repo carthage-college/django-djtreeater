@@ -146,7 +146,7 @@ def main():
                 + "&" + "TIMEFRAMENUMERICCODE=" + adirondack_term \
                 + "&" + "AccountCode=2010,2040,2011,2031" \
                 + "&" + "Exported=0"
-                # + "&" + "STUDENTNUMBER=1566304"
+                # + "&" + "STUDENTNUMBER=1342906"
 
             """
             DEFINIIONS

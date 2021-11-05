@@ -11,7 +11,7 @@ django.setup()
 from django.conf import settings
 from djimix.core.utils import get_connection, xsql
 from djtreeater.sql.stu_serv_rec import get_spring_to_fall, \
-    get_fall_to_spring, insert_ssr, get_last_ssr
+    get_fall_to_spring, insert_ssr, get_last_ssr, find_future_terms
 from djtreeater.core.stu_serv_utils import fn_set_term_vars
 
 import argparse
@@ -70,9 +70,9 @@ def main():
     # print("this is not a test")
     # set global variable
     # determines which database is being called from the command line
-    # if database == 'cars':
-    #     EARL = settings.INFORMIX_ODBC
-    if database == 'train':
+    if database == 'cars':
+        EARL = settings.INFORMIX_ODBC
+    elif database == 'train':
         EARL = settings.INFORMIX_ODBC_TRAIN
     elif database == 'sandbox':
         EARL = settings.INFORMIX_ODBC_TRAIN
@@ -90,6 +90,7 @@ def main():
             API_server = "carthage_thd_test_support"
             key = settings.ADIRONDACK_TEST_API_SECRET
 
+
     """+++++++++++++++++++++++++++++++++++++++++++++++++"""
     """This will look for records in the stu_acad_rec that do not exist in
     the stu_serv_rec and will create a basic entry
@@ -106,97 +107,174 @@ def main():
     That gets billed only for the year, not for the second semester.
     
     """
-    print(EARL)
+    # print(EARL)
 
-    ret = fn_set_term_vars()
-    print(ret)
-    last_sess = ret[0]
-    last_yr = ret[1]
-    target_sess = ret[2]
-    target_yr = ret[3]
-    target_yr = 2021
-
-    """For Spring session, we need to collect info if it exists from the fall
-        stu serv rec"""
-    if target_sess == 'RC':
-        cur_ssr_sql = get_fall_to_spring(target_sess, target_yr)
-
-        """For Fall session, we do not need to know anything about the spring
-       stu_serv_rec and there shouldn't be any First Time Frosh"""
+    '''determine how many days to look ahead'''
+    this_month = datetime.now().month
+    if this_month > 9:
+        days = 90
+    elif this_month < 5:
+        days = 180
     else:
-        cur_ssr_sql = get_spring_to_fall(target_sess, target_yr)
+        days = 45
+    print(days)
 
-    # print(cur_ssr_sql)
+    '''New process
+    1. Find upcoming terms
+    2. loop through those terms and update as needed
+    2a.  find students enrolled in each term
+    2b   find if they exist in stu_serv_rec
+    2c add if needed'''
+
+    '''get list of terms to search'''
+    future_terms = find_future_terms(days)
+    # print("Future Terms SQL = " + str(future_terms))
 
     connection = get_connection(EARL)
     """ connection closes when exiting the 'with' block """
     with connection:
         data_result = xsql(
-            cur_ssr_sql, connection,
+            future_terms, connection,
             key=settings.INFORMIX_DEBUG
         ).fetchall()
-    cur_ssr = list(data_result)
-    # print(cur_ssr)
+    fut_terms = list(data_result)
+    print("Future terms = " + str(fut_terms))
 
-    if len(cur_ssr) != 0:
-        for row in cur_ssr:
-            print('----------------')
-            print("Stu Serv Rec needed for " + str(row[0]))
-            # print(row)
-            carth_id = row[0]
-            # stu_cl = row[9]
-            # earn_hrs = row[6]
+    '''Loop through upcoming terms'''
+    for row in fut_terms:
+        sess = row[0]
+        yr = row[1]
+        season = row[2].strip()
+        cur_ssr_sql = ''
+        print(sess)
+        print(yr)
+        print(season)
+        '''Find students missing a student service record for the terms
+        in question'''
+        season = ''
+        if season == 'FALL':
+            cur_ssr_sql = get_spring_to_fall(sess, yr)
+        elif season == 'SPRING':
+            cur_ssr_sql = get_fall_to_spring(sess, yr)
+        else:
+            cur_ssr_sql = get_spring_to_fall('', 0)
 
-            """Fall term is always a clean insert - no parking info, those 
-                will come later via ???"""
-            if target_sess == 'RA':
+        # print(cur_ssr_sql)
 
-                print("clean insert - no need to use last term")
-                insSql = insert_ssr(carth_id, target_sess, target_yr, "", "",
-                               "", "R", "R", EARL)
-                # print(insSql)
+        connection = get_connection(EARL)
+        """ connection closes when exiting the 'with' block """
+        with connection:
+            data_result = xsql(cur_ssr_sql, connection,
+                               key=settings.INFORMIX_DEBUG).fetchall()
+        if data_result:
+            print(data_result)
+            cur_ssr = list(data_result)
+            # print(cur_ssr)
+            if len(cur_ssr) != 0:
+                for row in cur_ssr:
+                    print('----------------')
+                    print("Stu Serv Rec needed for " + str(row[0]) + ' for '
+                          + sess + ' ' + str(yr))
+                    # print(row)
+                    carth_id = row[0]
+                    # stu_cl = row[9]
+                    # earn_hrs = row[6]
 
-            else:
-                print("search previous term stu_serv_rec")
-                """This query will find the prior stu_serv_rec if it exists"""
-                last_ssr_sql = get_last_ssr(carth_id, last_yr, last_sess)
+                    '''---------------------------------'''
+                    """Fall term is always a clean insert - no parking info, 
+                        those will come later via ???"""
+                    '''---------------------------------'''
+                    if season == 'SPRING':
+                        print("clean insert - no need to use last term")
+                        insSql = insert_ssr(carth_id, sess, yr, "",
+                                            "",
+                                            "", "R", "R",'','', EARL)
+                        print(insSql)
+                        # cur = connection.cursor()
+                        # cur.execute(x)
+                        # connection.commit()
+                        exit()
+                    elif season == 'FALL':
+                        print("search fall term stu_serv_rec")
+                        '''---------------------------------'''
+                        """This query will find the prior stu_serv_rec if it 
+                            exists"""
+                        '''---------------------------------'''
+                        last_ssr_sql = get_last_ssr(carth_id, yr - 1, 'RA')
+                        # print(last_ssr_sql)
+                        connection = get_connection(EARL)
+                        """ connection closes when exiting the 'with' block """
+                        with connection:
+                            data_result = xsql(
+                                last_ssr_sql, connection,
+                                key=settings.INFORMIX_DEBUG
+                            ).fetchall()
+                            last_ssr = list(data_result)
+                            if len(last_ssr) != 0:
+                                print("Stu Serv Rec Found")
+                                print ("Can use previous term")
+                                for r in last_ssr:
+                                    billcode = r[9]
+                                    bldg = r[5]
+                                    room = r[6]
+                                    intdhsg = r[3]
+                                    rsvstat = r[10]
+                                    mealplan = r[7]
+                                    print(mealplan)
+                                    parkloc = r[8]
+                                    # parkloc = '37.1'
 
-                # print(last_ssr_sql)
-                connection = get_connection(EARL)
-                """ connection closes when exiting the 'with' block """
-                with connection:
-                    data_result = xsql(
-                        last_ssr_sql, connection,
-                        key=settings.INFORMIX_DEBUG
-                    ).fetchall()
-                    last_ssr = list(data_result)
-                    if len(last_ssr) != 0:
-                        print("Stu Serv Rec Found")
-                        print ("Can use previous term")
-                        for r in last_ssr:
-                            billcode = r[9]
-                            bldg = r[5]
-                            room = r[6]
-                            intdhsg = r[3]
-                            rsvstat = r[10]
-                            # mealplan = r[7]
-                            # parkloc = r[8]
-                        """Here I need something to decipher the existing 
-                            entry.for parking"""
-                        # print ("Insert " + str(carth_id), target_sess,
-                        #        str(target_yr), bldg, room, billcode,
-                        #        intdhsg, rsvstat)
-                        # x = insert_ssr(carth_id, target_sess, target_yr, bldg,
-                        #                room, billcode, intdhsg, rsvstat, EARL)
-                        # print(x)
+                                    print(parkloc)
+                                    print(parkloc[-2:])
+                                    if parkloc[-2:] == '.5' or parkloc[
+                                                               -2:] == '.4':
+                                        print("Spring payment")
+                                    else:
+                                        print("Full year payment")
+
+                                """Here I need something to decipher the 
+                                existing entry.for parking
+                                If we do this, then if the park_location field
+                                is the key.  If it ends in .1 or .9, then the
+                                fall fee covers the year and it should carry
+                                over to the spring.  Spring values do NOT
+                                move to the fall term"""
+
+                                print ("Insert " + str(carth_id), sess,
+                                       str(yr), bldg, room, billcode,
+                                       intdhsg, rsvstat, '', parking)
+                                x = insert_ssr(carth_id, sess,
+                                yr, bldg, room, billcode, intdhsg,
+                                          rsvstat, '', parkloc,  EARL)
+                                print(x)
+                                connection = get_connection(EARL)
+                                print("insert record using last term")
+                                # cur = connection.cursor()
+                                # cur.execute(x)
+                                # connection.commit()
+                                exit()
+                            else:
+                                print("No prior term - insert clean")
+                                x = insert_ssr(carth_id, sess,
+                                yr, "UN", "UN", "", "R", "R",'', '', EARL)
+                                print(x)
+                                with connection:
+                                    print("clean insert")
+                                    # cur = connection.cursor()
+                                    # cur.execute(x)
+                                    # connection.commit()
+                                    exit()
                     else:
-                        print("No prior rec - insert clean")
-                        # x = insert_ssr(carth_id, target_sess, target_yr,
-                        #                "UN", "UN", "", "R", "R", EARL)
-                        # print(x)
+                        pass
+            else:
+                print("Nothing to do")
 
-    else:
-        print("Nothing to do")
+        else:
+            print('No Data')
+
+        print('---------------')
+
+
 
 
 

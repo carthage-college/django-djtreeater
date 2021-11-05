@@ -484,10 +484,11 @@ def main():
                                                         connection = \
                                                             get_connection(
                                                             EARL)
-                                                        # print(
-                                                        # q_update_stuserv_rec)
-                                                        # print(
-                                                        # q_update_stuserv_args)
+
+                                                        print(
+                                                        q_update_stuserv_rec)
+                                                        print(
+                                                        q_update_stuserv_args)
                                                         """ connection 
                                                         closes when exiting the
                                                                    'with' 
@@ -500,6 +501,7 @@ def main():
                                                                 q_update_stuserv_rec,
                                                                 q_update_stuserv_args)
                                                         connection.commit()
+
                                                         # connection.close()
                                                         # continue
                                                         # print("Updated")
@@ -509,7 +511,7 @@ def main():
                                                             True"""
                                                         notify_flag = True
 
-                                                        # print("Mark room as posted...")
+                                                        print("Mark room as posted...")
                                                         fn_mark_room_posted(carthid,
                                                                 adir_room,
                                                                 adir_hallcode,
@@ -604,7 +606,7 @@ def main():
                                                        checkedindate,
                                                        billcode,
                                                        off_camp_rsv_apr)
-                                            # print(q_create_stu_serv_rec)
+                                            print(q_create_stu_serv_rec)
 
                                             connection = get_connection(EARL)
                                             with connection:

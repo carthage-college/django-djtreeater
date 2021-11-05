@@ -113,11 +113,13 @@ def fn_get_bill_code(idnum, bldg, roomtype, roomassignmentid, session,
         else:
             # print(x['DATA'])
             # export_time = datetime.strptime("January, 01 1900 01:00:00", '%B, %d %Y %H:%M:%S')
-            c = 0
+
             for  rows in x['DATA']:
-                export_time = datetime.strptime(rows[10], '%B, %d %Y %H:%M:%S')
+                print(rows)
+                print(rows[10])
+                # export_time = datetime.strptime(rows[10], '%B, %d %Y %H:%M:%S')
                 # print(export_time)
-                roomassignmentid = rows[14]
+                # roomassignmentid = rows[14]
                 billcode = rows[6]
                 return billcode
 

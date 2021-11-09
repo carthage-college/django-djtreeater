@@ -27,9 +27,8 @@ from django.conf import settings
 from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \
-    fn_mark_room_posted, fn_translate_bldg_for_adirondack, \
-    fn_mark_bill_exported, fn_set_terms, fn_check_cx_records, \
-    fn_sendmailfees, fn_set_grad_terms, fn_sendmailfees_all_trms
+    fn_mark_room_posted, fn_mark_bill_exported, fn_check_cx_records, \
+    fn_sendmailfees, fn_sendmailfees_all_trms
 from djtreeater.core.lookuplist import fn_lookuplist
 
 from djimix.core.utils import get_connection, xsql

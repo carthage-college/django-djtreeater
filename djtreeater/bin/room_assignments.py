@@ -1,6 +1,5 @@
 import hashlib
 import json
-from json.decoder import JSONDecodeError
 import os
 import sys
 import time
@@ -21,8 +20,6 @@ django.setup()
 # ________________
 
 from django.conf import settings
-from djtools.utils.mail import send_mail
-from djtreeater.sql.adirondack import Q_GET_TERM, Q_GET_TERMS
 from djtreeater.core.utilities import fn_write_error, \
     fn_write_billing_header, fn_write_assignment_header, fn_get_utcts, \
     fn_encode_rows_to_utf8, fn_get_bill_code, fn_fix_bldg, \

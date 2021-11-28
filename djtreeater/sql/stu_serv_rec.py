@@ -80,6 +80,7 @@ def get_fall_to_spring(sess, yr):
             (SELECT id
             FROM stu_serv_rec
             WHERE sess = '{0}' and yr = {1})
+            limit 10
             --     ) 
     '''.format(sess, yr)
 
@@ -137,7 +138,7 @@ def get_spring_to_fall(sess, yr):
             (SELECT id
             FROM stu_serv_rec
             WHERE sess = '{0}' and yr = {1})
-    
+            limit 10
     '''.format(sess, yr)
 
 

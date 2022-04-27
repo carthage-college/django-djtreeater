@@ -142,16 +142,19 @@ def main():
 
     '''Loop through upcoming terms'''
     for row in fut_terms:
-        sess = row[0]
-        yr = row[1]
-        season = row[2].strip()
+        # sess = row[0]
+        # yr = row[1]
+        sess = 'RC'
+        yr = 2022
+        # season = row[2].strip()
+        season = "FALL"
         cur_ssr_sql = ''
         print(sess)
         print(yr)
         print(season)
         '''Find students missing a student service record for the terms
         in question'''
-        season = ''
+        # season = ''
         if season == 'FALL':
             cur_ssr_sql = get_spring_to_fall(sess, yr)
         elif season == 'SPRING':
@@ -167,7 +170,7 @@ def main():
             data_result = xsql(cur_ssr_sql, connection,
                                key=settings.INFORMIX_DEBUG).fetchall()
         if data_result:
-            print(data_result)
+            # print(data_result)
             cur_ssr = list(data_result)
             # print(cur_ssr)
             if len(cur_ssr) != 0:
@@ -175,7 +178,7 @@ def main():
                     print('----------------')
                     print("Stu Serv Rec needed for " + str(row[0]) + ' for '
                           + sess + ' ' + str(yr))
-                    # print(row)
+                    print(row)
                     carth_id = row[0]
                     # stu_cl = row[9]
                     # earn_hrs = row[6]
@@ -225,10 +228,14 @@ def main():
                                     # parkloc = '37.1'
 
                                     print(parkloc)
-                                    print(parkloc[-2:])
-                                    if parkloc[-2:] == '.5' or parkloc[
+                                    # print(parkloc[-2:])
+                                    if not parkloc:
+                                        print("No Parking data")
+                                        parkloc = ''
+                                    elif parkloc[-2:] == '.5' or parkloc[
                                                                -2:] == '.4':
                                         print("Spring payment")
+                                        parkloc = ''
                                     else:
                                         print("Full year payment")
 
@@ -240,9 +247,12 @@ def main():
                                 over to the spring.  Spring values do NOT
                                 move to the fall term"""
 
-                                print ("Insert " + str(carth_id), sess,
-                                       str(yr), bldg, room, billcode,
-                                       intdhsg, rsvstat, '', parking)
+                                print ("Insert " + str(carth_id) + ', ' + sess
+                                       + ', ' + str(yr) + ', ' + bldg
+                                       + ', ' + room + ', ' + billcode
+                                       + ', ' + intdhsg + ', ' + rsvstat
+                                       + ', ' + parkloc)
+
                                 x = insert_ssr(carth_id, sess,
                                 yr, bldg, room, billcode, intdhsg,
                                           rsvstat, '', parkloc,  EARL)
@@ -252,7 +262,7 @@ def main():
                                 # cur = connection.cursor()
                                 # cur.execute(x)
                                 # connection.commit()
-                                exit()
+                                # exit()
                             else:
                                 print("No prior term - insert clean")
                                 x = insert_ssr(carth_id, sess,
@@ -263,7 +273,8 @@ def main():
                                     # cur = connection.cursor()
                                     # cur.execute(x)
                                     # connection.commit()
-                                    exit()
+                                    # exit
+                                    # ()
                     else:
                         pass
             else:

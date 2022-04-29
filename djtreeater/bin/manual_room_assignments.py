@@ -99,7 +99,7 @@ def main():
 
         """
         This is the command needed to run the script
-        python room_assignments.py --database=train --test -run_mode=auto
+        python manual_room_assignments.py --database=train --test -run_mode=auto
         Must specify the database, whether testing or live and whether
         user input is required
         """

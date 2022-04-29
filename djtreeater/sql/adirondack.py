@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-ADIRONDACK_QUERY = '''
-    SELECT  distinct
+ADIRONDACK_QUERY = '''SELECT  distinct
     TO_CHAR(IR.id) AS STUDENT_NUMBER, 
     TRIM(IR.firstname) AS FIRST_NAME, 
     TRIM(IR.middlename) AS MIDDLE_NAME, 
@@ -26,8 +25,8 @@ ADIRONDACK_QUERY = '''
         WHEN (CL.CL = 'SR') THEN 'Senior' 
         WHEN (CL.CL in ('GR', 'AT')) THEN 'Masters' 
         WHEN (CL.CL IN ('ND', 'SP')) THEN '' 
-           -- What do we do with students 
-           --not yet classified?  Can leave blank
+        	-- What do we do with students 
+            --not yet classified?  Can leave blank
         ELSE '' 
         END AS CLASS_STATUS, 
     CL.CL as STUDENT_STATUS,   --Want FF, FN, PF, PN, UT here
@@ -147,23 +146,23 @@ ADIRONDACK_QUERY = '''
      PRO.race as RACECODE,
      SPORT.DESCR AS SPORT,
      GREEK.ORG AS GREEK_LIFE,
-     PER.hsg_type AS HOUSING_TYPE,
-     ZP.distance_to_carthage AS DISTANCE         
-    -- these will probably be manually populated 
-    --    '' as preferred_pronoun,
-    --    '' as Service_Emotional_Support_Animal,    
+	 PER.hsg_type AS HOUSING_TYPE,
+	 ZP.distance_to_carthage AS DISTANCE         
+	-- these will probably be manually populated 
+	--    '' as preferred_pronoun,
+	--    '' as Service_Emotional_Support_Animal,    
 
-    FROM
+FROM
     (
     SELECT distinct id, prog, subprog, major, pref_name, student, 
-        sess, yr, acst, cl, major1, plan_grad_yr, adm_sess, adm_yr, 
-        hsg_type, row_num 
-        FROM
+    	sess, yr, acst, cl, major1, plan_grad_yr, adm_sess, adm_yr, 
+    	hsg_type, row_num 
+    	FROM
         (
         
         SELECT UNIQUE PV.id, PR.prog, PR.subprog, PR.major1 
-            AS major, ADM.pref_name, PV.student, TRM.sess, TRM.yr, PR.acst, 
-            PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr, 
+        	AS major, ADM.pref_name, PV.student, TRM.sess, TRM.yr, PR.acst, 
+        	PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr, 
             ADM.hsg_type,
             row_number() over ( partition BY PR.id
             ORDER BY 
@@ -174,7 +173,7 @@ ADIRONDACK_QUERY = '''
                     WHEN PR.prog = 'PARA' THEN 5 
                     ELSE 9 END) 
                     AS row_num 
-        FROM cc_provisioning_vw PV
+        FROM CC_provisioning_vw PV
         LEFT JOIN prog_enr_rec PR
                 ON PV.id = PR.id
         JOIN adm_rec ADM    ON    PR.id = ADM.id
@@ -182,16 +181,28 @@ ADIRONDACK_QUERY = '''
             AND    ADM.primary_app    =    'Y'
             
         JOIN (SELECT distinct id, sess, yr
-            FROM stu_serv_rec
-            WHERE sess in ('RA','RC')
+	        --FROM stu_serv_rec
+        	FROM stu_acad_rec
+        	WHERE sess in ('RA','RC')
             AND sess||YR in 
-                (SELECT distinct sess||yr 
-                FROM acad_cal_rec 
+            	(SELECT distinct sess||yr 
+            	FROM acad_cal_rec 
                 WHERE end_date > TODAY -1
                 AND beg_date < TODAY + 180
-                AND sess IN ('RA','RC'))
+            	AND sess IN ('RA','RC'))
+    		UNION
+      		SELECT distinct id, sess, yr
+	        FROM stu_serv_rec
+        	--FROM stu_acad_rec
+        	WHERE sess in ('RA','RC')
+            AND sess||YR in 
+            	(SELECT distinct sess||yr 
+            	FROM acad_cal_rec 
+                WHERE end_date > TODAY -1
+                AND beg_date < TODAY + 180
+            	AND sess IN ('RA','RC'))            
             ) TRM 
-                ON TRM.id = PR.id 
+            	ON TRM.id = PR.id 
         WHERE 
          (
             PV.student IN ('prog', 'stu', 'reg_clear')
@@ -207,21 +218,21 @@ ADIRONDACK_QUERY = '''
             )
             
          ---TLE   
-    UNION
+		UNION
          
          
         SELECT unique PV.id, ADM.prog, ADM.subprog , ADM.major as major, 
-            ADM.pref_name, PV.student,
+         	ADM.pref_name, PV.student,
             CASE 
-                WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
-                THEN ADM.plan_enr_sess   
-                ELSE TRM.sess
-            END as TERM,                 
+	            WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
+	            THEN ADM.plan_enr_sess   
+	            ELSE TRM.sess
+	        END as TERM,                 
             CASE 
-                WHEN TRM.yr is null 
-                THEN ADM.plan_enr_yr   
-                ELSE TRM.yr
-            END as YR,          
+	            WHEN TRM.yr is null 
+	            THEN ADM.plan_enr_yr   
+	            ELSE TRM.yr
+	        END as YR,          
             PR.acst, PR.cl, PR.major1, 
             PR.plan_grad_yr,
             PR.adm_sess,
@@ -249,8 +260,8 @@ ADIRONDACK_QUERY = '''
             FROM stu_acad_rec
             WHERE sess in ('GA', 'GC', 'GE')
             AND sess||YR in 
-                (SELECT distinct sess||yr 
-                FROM acad_cal_rec 
+            	(SELECT distinct sess||yr 
+            	FROM acad_cal_rec 
                 WHERE end_date > TODAY -1
                 AND beg_date < TODAY + 180
                 AND sess in ('GA', 'GC', 'GE'))
@@ -271,17 +282,17 @@ ADIRONDACK_QUERY = '''
         
          --TO add grad students to Adirondack
         SELECT UNIQUE PV.id, PR.prog, PR.subprog, PR.major1 AS major, 
-            ADM.pref_name, PV.student, 
+        	ADM.pref_name, PV.student, 
             CASE 
-                WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
-                THEN ADM.plan_enr_sess   
-                ELSE TRM.sess
-            END AS TERM,                 
+	            WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
+	            THEN ADM.plan_enr_sess   
+	            ELSE TRM.sess
+	        END AS TERM,                 
             CASE 
-                WHEN TRM.yr is null 
-                THEN ADM.plan_enr_yr   
-                ELSE TRM.yr
-            END as YR,                 
+	            WHEN TRM.yr is null 
+	            THEN ADM.plan_enr_yr   
+	            ELSE TRM.yr
+	        END as YR,                 
             PR.acst, PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, 
             PR.adm_yr, ADM.hsg_type, 
             row_number() over ( partition BY PR.id
@@ -296,12 +307,12 @@ ADIRONDACK_QUERY = '''
                     ON PV.id = PR.id
                     AND PR.prog = 'GRAD'
             JOIN adm_rec ADM 
-                ON PR.id = ADM.id
+            	ON PR.id = ADM.id
                 AND ADM.prog = PR.prog
                 AND    ADM.primary_app    =    'Y'
-                AND ADM.plan_enr_sess in ('GA', 'GC','GE')
-                AND (PR.plan_grad_yr >= YEAR(TODAY) or
-                PR.plan_grad_yr = 0)
+               	AND ADM.plan_enr_sess in ('GA', 'GC','GE')
+            	AND (PR.plan_grad_yr >= YEAR(TODAY) or
+            	PR.plan_grad_yr = 0)
 
             --How to deal with the term - Grads not in RA or RC
             --Not in stu_serv_rec
@@ -312,10 +323,10 @@ ADIRONDACK_QUERY = '''
             WHERE sess in ('GA', 'GC', 'GE')
                 AND sess||YR in 
                 (SELECT distinct sess||yr 
-                    FROM acad_cal_rec 
-                    where end_date > TODAY -1
-                    AND beg_date < TODAY + 180
-                    AND sess in ('GA', 'GC', 'GE'))
+                	FROM acad_cal_rec 
+                   	where end_date > TODAY -1
+                   	AND beg_date < TODAY + 180
+                	AND sess in ('GA', 'GC', 'GE'))
                 ) 
                 TRM ON TRM.id = PR.id  
                 
@@ -331,18 +342,18 @@ ADIRONDACK_QUERY = '''
                 --AND (PR.deg_grant_date IS NULL)
                 )
                 
-        UNION 
+         UNION 
     
           --Incoming Students
-        SELECT unique PV.id, PV.program, '' subprog, '' major, 
-            ADM.pref_name, PV.student, ADM.plan_enr_sess sess, 
-            ADM.plan_enr_yr yr, '' acst, ADM.cl, '' major1,  
+         SELECT unique PV.id, PV.program, '' subprog, '' major, 
+         	ADM.pref_name, PV.student, ADM.plan_enr_sess sess, 
+         	ADM.plan_enr_yr yr, '' acst, ADM.cl, '' major1,  
             NULL::SMALLINT plan_grad_yr, '' adm_sess, 
             NULL::SMALLINT adm_yr, ADM.hsg_type, 1 row_num
-        FROM provisioning_vw PV
-        LEFT JOIN adm_rec ADM    ON    PV.id = ADM.id
+         FROM cc_provisioning_vw PV
+         LEFT JOIN adm_rec ADM    ON    PV.id = ADM.id
              AND    ADM.primary_app    =    'Y'
-             WHERE PV.student = 'incoming'    
+             WHERE PV.incoming = 'incoming'    
              and ADM.plan_enr_sess in ('RA', 'RC', 'GA', 'GC', 'GE')
             --UNION
         
@@ -355,23 +366,23 @@ ADIRONDACK_QUERY = '''
         
         LEFT JOIN 
             (  SELECT a1.id id1, a1.line1 eml1, a2.id id2, a2.eml2
-                FROM aa_rec a1
-                LEFT JOIN
-                (
+               FROM aa_rec a1
+               LEFT JOIN
+                  (
                     SELECT id, aa, line1 eml2, beg_date, end_date 
                     FROM aa_rec 
                     WHERE aa = 'EML2'            
                     AND  beg_date < TODAY
                     AND NVL(end_date, TODAY) >= TODAY     
-                    ) a2 
+                  ) a2 
                 ON a2.id = a1.id 
-               WHERE 
-                   (
+              WHERE 
+                  (
                     a1.aa = 'EML1'
                     AND    a1.beg_date < TODAY
                     AND NVL(a1.end_date, TODAY) >= TODAY
-                   )
-           ) EML on EML.id1 = PER.id 
+                  )
+            ) EML on EML.id1 = PER.id 
     
     
         LEFT JOIN
@@ -459,6 +470,7 @@ ADIRONDACK_QUERY = '''
             WHERE aa = 'ICE' 
             AND (end_date IS NULL OR end_date >= TODAY)) EMER
             ON EMER.id = PER.id
+            
 '''
 
 Q_GET_TERM = '''select distinct 

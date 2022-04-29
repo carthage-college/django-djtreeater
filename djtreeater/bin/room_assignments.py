@@ -594,12 +594,15 @@ def main():
                                                     q_create_stu_serv_rec)
                                             connection.commit()
 
-                                        fn_mark_room_posted(carthid,
-                                                            room,
-                                                            bldg,
-                                                            term, posted,
-                                                            roomassignmentid,
-                                                            API_server, key)
+                                            """This seems to be improperly 
+                                            indented, running the same
+                                            function twice"""
+                                            fn_mark_room_posted(carthid,
+                                                                room,
+                                                                bldg,
+                                                                term, posted,
+                                                                roomassignmentid,
+                                                                API_server, key)
 
                                 except Exception as e:
                                     print("Error in process " + repr(e))

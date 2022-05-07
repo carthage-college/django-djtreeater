@@ -116,7 +116,7 @@ def main():
     elif this_month < 5:
         days = 180
     else:
-        days = 45
+        days = 180
     print(days)
 
     '''New process
@@ -144,10 +144,10 @@ def main():
     for row in fut_terms:
         # sess = row[0]
         # yr = row[1]
-        sess = 'RC'
+        sess = 'RA'
         yr = 2022
         # season = row[2].strip()
-        season = "FALL"
+        season = "SPRING"
         cur_ssr_sql = ''
         print(sess)
         print(yr)
@@ -162,7 +162,7 @@ def main():
         else:
             cur_ssr_sql = get_spring_to_fall('', 0)
 
-        # print(cur_ssr_sql)
+        print(cur_ssr_sql)
 
         connection = get_connection(EARL)
         """ connection closes when exiting the 'with' block """
@@ -193,10 +193,10 @@ def main():
                                             "",
                                             "", "R", "R",'','', EARL)
                         print(insSql)
-                        # cur = connection.cursor()
-                        # cur.execute(x)
-                        # connection.commit()
-                        exit()
+                        cur = connection.cursor()
+                        cur.execute(insSql)
+                        connection.commit()
+                        # exit()
                     elif season == 'FALL':
                         print("search fall term stu_serv_rec")
                         '''---------------------------------'''
@@ -224,7 +224,7 @@ def main():
                                     rsvstat = r[10]
                                     mealplan = r[7]
                                     print(mealplan)
-                                    parkloc = r[8]
+                                    parkloc = str(r[8])
                                     # parkloc = '37.1'
 
                                     print(parkloc)

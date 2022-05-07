@@ -138,7 +138,7 @@ def get_spring_to_fall(sess, yr):
             (SELECT id
             FROM stu_serv_rec
             WHERE sess = '{0}' and yr = {1})
-            limit 10
+            --limit 10
     '''.format(sess, yr)
 
 
@@ -160,7 +160,7 @@ def insert_ssr(id, sess, yr, bldg, room, billcode, intendhsg, rsvstat, meal,
         values
             ({0}, "{1}", {2}, "{7}",  
             "{6}", "MAIN", "{3}", "{4}",  
-            "", "", {8}, "{5}", "")'''.format(id, sess, yr, bldg, room,
+            "", "", "{8}", "{5}", "")'''.format(id, sess, yr, bldg, room,
                             billcode, intendhsg, rsvstat, parking )
 
         return q_ins

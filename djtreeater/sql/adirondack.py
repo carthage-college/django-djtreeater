@@ -354,8 +354,10 @@ FROM
          LEFT JOIN adm_rec ADM    ON    PV.id = ADM.id
              AND    ADM.primary_app    =    'Y'
              WHERE PV.incoming = 'incoming'    
-             and ADM.plan_enr_sess in ('RA', 'RC', 'GA', 'GC', 'GE')
-            --UNION
+             and PV.student is null
+			 and ADM.plan_enr_sess in ('RA', 'RC', 'GA', 'GC', 'GE')
+             and ADM.plan_enr_yr >= YEAR(TODAY)
+             
         
             ) rnk_prog
             WHERE row_num = 1 

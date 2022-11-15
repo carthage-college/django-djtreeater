@@ -125,6 +125,7 @@ def main():
                 ADIRONDACK_QUERY, connection, key=settings.INFORMIX_DEBUG
             ).fetchall()
 
+        lastid = 0
         # print(data_result)
         ret = list(data_result)
         if ret is None:
@@ -143,15 +144,19 @@ def main():
                 csvWriter = csv.writer(file_out, delimiter='|')
                 encoded_rows = fn_encode_rows_to_utf8(ret)
                 for row in encoded_rows:
-                # for row in ret:
-                #     print(row)
-                    csvWriter.writerow(row)
+                    stuid = row[0]
+                    if lastid == stuid:
+                        print(row)
+                        pass
+                    else:
+                        csvWriter.writerow(row)
+                    lastid = stuid
             file_out.close()
 
             if not test:
-                # print("Send to FTP")
+                print("Send to FTP")
                 # send file to SFTP Site..
-                sftp_upload(adirondackdata)
+                # sftp_upload(adirondackdata)
 
         if test:
             SUBJECT = "[Adirondack] Student Bio data success"

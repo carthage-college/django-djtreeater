@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser(description=desc)
 # Test with this then remove, use the standard logging mechanism
 logger = logging.getLogger(__name__)
 
-# def main():
+
 def fn_lookuplist(test):
 
     if test != "test":
@@ -38,17 +38,18 @@ def fn_lookuplist(test):
     else:
         API_server = "carthage_thd_test_support"
         key = settings.ADIRONDACK_TEST_API_SECRET
-    # print(API_server)
+    print(API_server)
 
     try:
         utcts = fn_get_utcts()
+        # print(utcts)
         hashstring = str(utcts) + key
 
         # Assumes the default UTF-8
         hash_object = hashlib.md5(hashstring.encode())
 
 
-        '''Cannot pass in a timeframenumericcode at present,but can return 
+        '''Cannot pass in a timeframenumericcode at present,but can return
         them.  May be the method to get all, filter by date and build a list
         based on end date > current date.  Can then use that list in other
         python scripts to determine what to bring back'''
@@ -63,7 +64,9 @@ def fn_lookuplist(test):
         # print("URL = " + url)
 
         response = requests.get(url)
+        # print(response)
         x = json.loads(response.content)
+        # print(x)
 
         termlist = []
         # print(x['DATA'])
@@ -96,4 +99,3 @@ def fn_lookuplist(test):
                        + repr(e))
         # fn_write_error("Error in lookuplist.py - Main: "
         #                + repr(e))
-

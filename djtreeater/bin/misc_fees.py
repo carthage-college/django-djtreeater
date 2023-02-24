@@ -64,6 +64,7 @@ parser.add_argument(
     dest="database"
 )
 
+
 # Test with this then remove, use the standard logging mechanism
 # logger = logging.getLogger(__name__)
 
@@ -92,7 +93,6 @@ def main():
         key = settings.ADIRONDACK_TEST_API_SECRET
     # print(API_server)
 
-
     try:
         utcts = fn_get_utcts()
         hashstring = str(utcts) + key
@@ -107,7 +107,6 @@ def main():
         # Adirondack dataset
         bill_list = []
 
-      
         termlist = fn_lookuplist(test)
         # print("From THD Export Date")
         # print(termlist)
@@ -127,7 +126,6 @@ def main():
                                 "ascii_archive/" +
                                 f[:ext] + "_" + timestr + f[ext:])
 
-
         # for row in ret:
         for row in termlist:
             # i = row[0].strip() + ' ' + str(row[1])
@@ -137,15 +135,15 @@ def main():
             """Get data from Adirondack"""
 
             url = "https://carthage.datacenter.adirondacksolutions.com/" \
-                +API_server+"/apis/thd_api.cfc?" \
-                "method=studentBILLING&" \
-                "Key=" + key \
-                + "&" + "utcts=" + str(utcts) \
-                + "&" + "h=" + hash_object.hexdigest() \
-                + "&" + "TIMEFRAMENUMERICCODE=" + adirondack_term \
-                + "&" + "AccountCode=2010,2040,2011,2031" \
-                + "&" + "Exported=0"
-                # + "&" + "STUDENTNUMBER=1342906"
+                  + API_server + "/apis/thd_api.cfc?" \
+                                 "method=studentBILLING&" \
+                                 "Key=" + key \
+                  + "&" + "utcts=" + str(utcts) \
+                  + "&" + "h=" + hash_object.hexdigest() \
+                  + "&" + "TIMEFRAMENUMERICCODE=" + adirondack_term \
+                  + "&" + "AccountCode=2010,2040,2011,2031" \
+                  + "&" + "Exported=0"
+            # + "&" + "STUDENTNUMBER=1342906"
 
             """
             DEFINIIONS
@@ -174,7 +172,7 @@ def main():
 
             # Set up the file names for the duplicate check
             cur_file = settings.ADIRONDACK_TXT_OUTPUT + "billing_logs/" + \
-                       adirondack_term.replace(" ","") + '_processed.csv'
+                       adirondack_term.replace(" ", "") + '_processed.csv'
             # cur_file = settings.ADIRONDACK_TXT_OUTPUT + 'billing_logs/' +
             # current_term + '_processed.csv'
             # last_file = settings.ADIRONDACK_TXT_OUTPUT
@@ -224,7 +222,6 @@ def main():
                 # Compare each new file's line ID
                 adir_term = i[4]
                 ascii_term = i[4][:2] + i[4][-2:]
-
 
                 # Round the amount to 2 decimal places
                 amount = '{:.2f}'.format(i[2])
@@ -277,7 +274,7 @@ def main():
                         file_descr = item_type.replace(" ", "_")
 
                         fee_file = settings.ADIRONDACK_TXT_OUTPUT + tot_code \
-                            + "_" + file_descr + "_" \
+                                   + "_" + file_descr + "_" \
                                    + datetimestr + ".csv"
 
                         with open(fee_file, 'a') as fee_output:
@@ -334,12 +331,12 @@ def main():
             # print("EMAIL TO " + str(settings.ADIRONDACK_ASCII_EMAIL))
             subject = 'Housing Miscellaneous Fees'
             body = 'There are housing fees to process via ASCII ' \
-                'post'
+                   'post'
 
             fn_sendmailfees_all_trms(settings.ADIRONDACK_ASCII_EMAIL,
-                            settings.ADIRONDACK_FROM_EMAIL,
-                            body, subject
-                            )
+                                     settings.ADIRONDACK_FROM_EMAIL,
+                                     body, subject
+                                     )
 
 
     except Exception as e:
@@ -347,6 +344,7 @@ def main():
         #                + repr(e))
         fn_write_error("Error in misc_fees.py - Main: "
                        + repr(e))
+
 
 if __name__ == "__main__":
     args = parser.parse_args()

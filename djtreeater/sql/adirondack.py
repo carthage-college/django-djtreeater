@@ -150,18 +150,21 @@ ADIRONDACK_QUERY = '''SELECT  distinct
 	 ZP.distance_to_carthage AS DISTANCE         
 	-- these will probably be manually populated 
 	--    '' as preferred_pronoun,
-	--    '' as Service_Emotional_Support_Animal,    
+	--    '' as Service_Emotional_Support_Animal,  
+	, row_num, priority  
 
 FROM
     (
     SELECT distinct id, prog, subprog, major, pref_name, student, 
     	sess, yr, acst, cl, major1, plan_grad_yr, adm_sess, adm_yr, 
-    	hsg_type, row_num 
+    	hsg_type, row_num,  priority
     	FROM
         (
         
         SELECT UNIQUE PV.id, PR.prog, PR.subprog, PR.major1 
-        	AS major, ADM.pref_name, PV.student, TRM.sess, TRM.yr, PR.acst, 
+        	AS major, ADM.pref_name, PV.student,  
+        	PR.adm_sess sess, PR.adm_yr yr, 
+        	PR.acst, 
         	PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr, 
             ADM.hsg_type,
             row_number() over ( partition BY PR.id
@@ -172,9 +175,9 @@ FROM
                     WHEN PR.PROG = 'ACT' THEN 4 
                     WHEN PR.prog = 'PARA' THEN 5 
                     ELSE 9 END) 
-                    AS row_num 
+                    AS row_num, 2 priority 
         FROM CC_provisioning_vw PV
-        LEFT JOIN prog_enr_rec PR
+        JOIN prog_enr_rec PR
                 ON PV.id = PR.id
         JOIN adm_rec ADM    ON    PR.id = ADM.id
             AND ADM.prog = PR.prog
@@ -203,6 +206,7 @@ FROM
             	AND sess IN ('RA','RC'))            
             ) TRM 
             	ON TRM.id = PR.id 
+            	
         WHERE 
          (
             PV.student IN ('prog', 'stu', 'reg_clear')
@@ -213,6 +217,7 @@ FROM
             AND (PR.lv_date IS NULL)
             AND (PR.prog != 'GRAD')
             AND (PR.deg_grant_date IS NULL)
+            AND PV.id not in (Select id from cc_incoming_students_vw)
             --TEMPORARY
            --       AND (PR.cl in ("FF", "FR", "FN"))
             )
@@ -222,7 +227,7 @@ FROM
          
          
         SELECT unique PV.id, ADM.prog, ADM.subprog , ADM.major as major, 
-         	ADM.pref_name, PV.student,
+         	ADM.pref_name, PV.student, 
             CASE 
 	            WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
 	            THEN ADM.plan_enr_sess   
@@ -242,7 +247,7 @@ FROM
                 CASE when ADM.plan_enr_sess in ('GA', 'GC') then 1 
                     when ADM.plan_enr_sess in ('GE')  then 2 
                     else 3 end ) 
-                    as row_num  
+                    as row_num , 3 priority 
         FROM cc_provisioning_vw PV
         LEFT JOIN prog_enr_rec PR
             ON PV.id = PR.id
@@ -301,7 +306,7 @@ FROM
                     WHEN TRM.sess in ('GE') THEN 2 
                     ELSE 3 
                     END ) 
-                    AS row_num  
+                    AS row_num,  1 priority
             FROM cc_provisioning_vw PV
             LEFT JOIN prog_enr_rec PR
                     ON PV.id = PR.id
@@ -345,20 +350,21 @@ FROM
          UNION 
     
           --Incoming Students
-         SELECT unique PV.id, PV.program, '' subprog, '' major, 
+          
+          
+            SELECT unique PV.id, PV.program, '' subprog, '' major, 
          	ADM.pref_name, PV.student, ADM.plan_enr_sess sess, 
          	ADM.plan_enr_yr yr, '' acst, ADM.cl, '' major1,  
             NULL::SMALLINT plan_grad_yr, '' adm_sess, 
-            NULL::SMALLINT adm_yr, ADM.hsg_type, 1 row_num
-         FROM cc_provisioning_vw PV
-         LEFT JOIN adm_rec ADM    ON    PV.id = ADM.id
+            NULL::SMALLINT adm_yr, ADM.hsg_type, 1 row_num, 4 priority
+	         FROM cc_provisioning_vw PV
+    	     LEFT JOIN adm_rec ADM    ON    PV.id = ADM.id
              AND    ADM.primary_app    =    'Y'
              WHERE PV.incoming = 'incoming'    
-             and PV.student is null
+             --and PV.student is null
 			 and ADM.plan_enr_sess in ('RA', 'RC', 'GA', 'GC', 'GE')
              and ADM.plan_enr_yr >= YEAR(TODAY)
-             
-        
+			
             ) rnk_prog
             WHERE row_num = 1 
          ) PER
@@ -473,6 +479,7 @@ FROM
             AND (end_date IS NULL OR end_date >= TODAY)) EMER
             ON EMER.id = PER.id
             
+        order by STUDENT_NUMBER, PER.priority
 '''
 
 Q_GET_TERM = '''select distinct 

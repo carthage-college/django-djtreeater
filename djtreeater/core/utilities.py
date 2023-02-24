@@ -532,16 +532,13 @@ def fn_send_mail(to, frum, body, subject):
 def fn_get_utcts():
     """GMT Zero hour is 1/1/70
     Zero hour in seconds = 0
+    Starting 1/1/2023 must use milliseconds
+    """
 
-    Current date and time"""
-    a = datetime.datetime.now()
-    """Format properly"""
-    b = a.strftime('%a %b %d %H:%M:%S %Y')
-    """convert to a struct time"""
-    c = time.strptime(b)
-    """Calculate seconds from GMT zero hour"""
-    utcts = calendar.timegm(c)
-    # print("Seconds from UTC Zero hour = " + str(utcts))
+    millisec = int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds() * 1000)
+    # print(millisec)
+    utcts = (millisec / 1000)
+
     return utcts
 
 

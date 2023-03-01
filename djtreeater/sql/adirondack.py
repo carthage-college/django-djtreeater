@@ -163,7 +163,17 @@ FROM
         
         SELECT UNIQUE PV.id, PR.prog, PR.subprog, PR.major1 
         	AS major, ADM.pref_name, PV.student,  
-        	PR.adm_sess sess, PR.adm_yr yr, 
+        	 CASE 
+	            WHEN (trim(TRM.sess) = '') OR TRM.sess is null 
+	            THEN ADM.plan_enr_sess   
+	            ELSE TRM.sess
+	        END as SESS,                 
+            CASE 
+	            WHEN TRM.yr is null 
+	            THEN ADM.plan_enr_yr   
+	            ELSE TRM.yr
+	        END as YR,          
+	        
         	PR.acst, 
         	PR.cl, PR.major1, PR.plan_grad_yr, PR.adm_sess, PR.adm_yr, 
             ADM.hsg_type,
